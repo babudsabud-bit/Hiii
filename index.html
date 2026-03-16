@@ -3,232 +3,218 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Aether-OS | Multimodal AI Interface</title>
+    <title>AETHER-OS | HYPER-INTERACTIVE AI</title>
     <style>
         :root {
             --neon-blue: #00f2ff;
-            --deep-space: #050a10;
-            --glass: rgba(0, 242, 255, 0.05);
-            --border-glow: rgba(0, 242, 255, 0.3);
+            --neon-purple: #bc00ff;
+            --bg-dark: #02050a;
+            --glass: rgba(0, 242, 255, 0.07);
         }
 
-        body {
-            background-color: var(--deep-space);
+        body, html {
+            margin: 0; padding: 0;
+            background: var(--bg-dark);
             color: var(--neon-blue);
-            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-            margin: 0;
-            overflow: hidden;
-            display: flex;
-            flex-direction: column;
-            height: 100vh;
+            font-family: 'Segoe UI', sans-serif;
+            height: 100vh; overflow: hidden;
         }
 
-        /* Futuristic Grid Background */
-        body::before {
-            content: "";
-            position: absolute;
-            width: 200%;
-            height: 200%;
-            background-image: 
-                linear-gradient(var(--border-glow) 1px, transparent 1px),
-                linear-gradient(90deg, var(--border-glow) 1px, transparent 1px);
-            background-size: 50px 50px;
-            transform: perspective(500px) rotateX(60deg);
-            top: -50%;
-            left: -50%;
+        /* --- Holographic Camera Feed --- */
+        #camera-wrapper {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
             z-index: -1;
-            opacity: 0.2;
+            filter: contrast(1.2) brightness(0.8);
         }
 
-        header {
-            padding: 20px;
-            border-bottom: 1px solid var(--neon-blue);
-            text-shadow: 0 0 10px var(--neon-blue);
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
+        video {
+            width: 100%; height: 100%; object-fit: cover;
+            transition: all 0.5s ease;
         }
 
-        .status-bar {
-            font-size: 0.8rem;
-            letter-spacing: 2px;
+        .ai-processing video {
+            filter: hue-rotate(280deg) saturate(2) sepia(0.3);
         }
 
-        .main-container {
+        /* --- Interface HUD --- */
+        .hud-container {
             display: grid;
-            grid-template-columns: 1fr 2fr 1fr;
-            gap: 20px;
-            padding: 20px;
-            flex-grow: 1;
+            grid-template-columns: 400px 1fr;
+            height: 100vh;
+            padding: 30px;
+            box-sizing: border-box;
+            background: radial-gradient(circle at center, transparent, rgba(2, 5, 10, 0.8));
         }
 
-        .panel {
+        .control-panel {
             background: var(--glass);
-            border: 1px solid var(--border-glow);
-            border-radius: 5px;
-            padding: 15px;
-            position: relative;
-            backdrop-filter: blur(5px);
-        }
-
-        .panel::before {
-            content: "";
-            position: absolute;
-            top: 0; left: 0;
-            width: 10px; height: 10px;
-            border-top: 2px solid var(--neon-blue);
-            border-left: 2px solid var(--neon-blue);
-        }
-
-        h2 {
-            font-size: 1rem;
-            margin-top: 0;
-            border-bottom: 1px solid var(--border-glow);
-            padding-bottom: 10px;
-            text-transform: uppercase;
-        }
-
-        /* Visualizer placeholders */
-        .visualizer {
-            height: 150px;
-            border: 1px dashed var(--border-glow);
-            margin-top: 10px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.7rem;
-            position: relative;
-        }
-
-        .scan-line {
-            position: absolute;
-            width: 100%;
-            height: 2px;
-            background: var(--neon-blue);
-            box-shadow: 0 0 15px var(--neon-blue);
-            top: 0;
-            animation: scan 4s linear infinite;
-        }
-
-        @keyframes scan {
-            0% { top: 0%; }
-            100% { top: 100%; }
-        }
-
-        .ai-core {
+            border: 1px solid var(--neon-blue);
+            backdrop-filter: blur(20px);
+            padding: 25px;
             display: flex;
             flex-direction: column;
-            justify-content: center;
-            align-items: center;
+            border-radius: 20px;
+            box-shadow: 0 0 50px rgba(0, 242, 255, 0.1);
         }
 
-        .core-circle {
-            width: 200px;
-            height: 200px;
-            border: 2px solid var(--neon-blue);
-            border-radius: 50%;
-            box-shadow: 0 0 30px var(--border-glow);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            animation: pulse 2s infinite ease-in-out;
-        }
-
-        @keyframes pulse {
-            0% { transform: scale(1); opacity: 0.8; }
-            50% { transform: scale(1.05); opacity: 1; }
-            100% { transform: scale(1); opacity: 0.8; }
-        }
-
-        .data-stream {
+        .chat-log {
+            flex-grow: 1;
+            overflow-y: auto;
+            margin: 20px 0;
             font-family: 'Courier New', monospace;
-            font-size: 0.75rem;
-            color: rgba(0, 242, 255, 0.6);
-            overflow-y: hidden;
-            height: 200px;
+            font-size: 0.9rem;
         }
+
+        .msg { margin-bottom: 15px; line-height: 1.4; border-bottom: 1px solid rgba(0, 242, 255, 0.1); padding-bottom: 5px; }
+        .ai-text { color: var(--neon-purple); text-shadow: 0 0 5px var(--neon-purple); }
+
+        /* --- Interaction Elements --- */
+        .input-group { display: flex; flex-direction: column; gap: 10px; }
+        
+        input {
+            background: rgba(0,0,0,0.5); border: 1px solid var(--neon-blue);
+            color: var(--neon-blue); padding: 15px; border-radius: 10px; outline: none;
+        }
+
+        .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 
         button {
-            background: transparent;
-            border: 1px solid var(--neon-blue);
-            color: var(--neon-blue);
-            padding: 10px 20px;
-            cursor: pointer;
-            transition: 0.3s;
-            text-transform: uppercase;
-            font-size: 0.8rem;
+            background: transparent; border: 1px solid var(--neon-blue);
+            color: var(--neon-blue); padding: 12px; cursor: pointer;
+            text-transform: uppercase; font-weight: bold; transition: 0.3s;
         }
 
-        button:hover {
-            background: var(--neon-blue);
-            color: var(--deep-space);
-            box-shadow: 0 0 20px var(--neon-blue);
+        button:hover { background: var(--neon-blue); color: #000; box-shadow: 0 0 20px var(--neon-blue); }
+        .mic-active { border-color: var(--neon-purple); color: var(--neon-purple); animation: blink 1s infinite; }
+
+        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
+
+        .scanning-line {
+            position: absolute; width: 100%; height: 4px;
+            background: var(--neon-purple); box-shadow: 0 0 20px var(--neon-purple);
+            top: -10px; display: none; z-index: 10;
+            animation: scanMove 2s infinite linear;
         }
 
+        @keyframes scanMove { 0% { top: 0%; } 100% { top: 100%; } }
     </style>
 </head>
 <body>
 
-<header>
-    <div>AETHER-OS // MULTIMODAL CORE</div>
-    <div class="status-bar">SYSTEM STATUS: OPTIMIZED [2050.v3]</div>
-</header>
+    <div id="camera-wrapper">
+        <video id="vid" autoplay playsinline></video>
+        <div id="scanner" class="scanning-line"></div>
+    </div>
 
-<div class="main-container">
-    <div class="panel">
-        <h2>Sensory Feed</h2>
-        <p>Camera: <span style="color: #0f0;">ACTIVE</span></p>
-        <div class="visualizer">
-            <div class="scan-line"></div>
-            [IMAGE ANALYSIS STREAM]
-        </div>
-        <p>Microphone: <span style="color: #0f0;">LISTENING</span></p>
-        <div class="visualizer">
-            <div style="display: flex; gap: 3px;">
-                <div style="height:20px; width:4px; background:var(--neon-blue);"></div>
-                <div style="height:40px; width:4px; background:var(--neon-blue);"></div>
-                <div style="height:30px; width:4px; background:var(--neon-blue);"></div>
-                <div style="height:50px; width:4px; background:var(--neon-blue);"></div>
+    <div class="hud-container">
+        <div class="control-panel">
+            <h1 style="margin: 0; letter-spacing: 5px; color: var(--neon-blue);">AETHER <span style="font-weight: 200;">OS</span></h1>
+            <p style="font-size: 0.7rem; color: var(--neon-purple);">CORE: LLM-OPTIMIZED [2050-X]</p>
+
+            <div class="chat-log" id="logs">
+                <div class="msg">>> SYSTEM READY. INITIALIZE SENSORS.</div>
+            </div>
+
+            <div class="input-group">
+                <input type="text" id="textInput" placeholder="Type command...">
+                <div class="btn-row">
+                    <button onclick="initCamera()">Start Vision</button>
+                    <button id="micBtn" onclick="toggleMic()">Microphone</button>
+                </div>
+                <button style="border-color: var(--neon-purple); color: var(--neon-purple);" onclick="aiProcess()">Analyze Environment</button>
             </div>
         </div>
-    </div>
 
-    <div class="panel ai-core">
-        <h2>Neural Processing Unit</h2>
-        <div class="core-circle">
-            <div style="text-align: center;">
-                <div style="font-size: 2rem;">98.4%</div>
-                <div style="font-size: 0.6rem;">LLM SYNC</div>
-            </div>
-        </div>
-        <div style="margin-top: 30px; text-align: center;">
-            <p>Analyzing physical environment...</p>
-            <button onclick="alert('Initiating Neural Link...')">Sync Devices</button>
+        <div style="text-align: right; padding: 20px; pointer-events: none;">
+            <div>DATA_CORE: <span id="cpu">92%</span></div>
+            <div>VOICE_ENGINE: <span id="v-status">ONLINE</span></div>
         </div>
     </div>
 
-    <div class="panel">
-        <h2>Connected Nodes</h2>
-        <div class="data-stream">
-            > ROBOTICS_ARM: CONNECTED<br>
-            > PHONE_LINK: STABLE<br>
-            > PC_SOUND_SYS: CALIBRATED<br>
-            > OPTIMIZATION: SPARSE_MOE<br>
-            > LATENCY: 0.002ms<br>
-            > THOUGHT_TRACE: ACTIVE...
-        </div>
-        <h2>Optimization Logs</h2>
-        <div style="font-size: 0.8rem;">
-            Precision: 4-bit Dynamic<br>
-            Pruning: 45% Complete<br>
-            Memory: Quantum-Cached
-        </div>
-    </div>
-</div>
+    <script>
+        const video = document.getElementById('vid');
+        const logs = document.getElementById('logs');
+        const textInput = document.getElementById('textInput');
+        const scanner = document.getElementById('scanner');
+        const micBtn = document.getElementById('micBtn');
 
-<footer style="padding: 10px; font-size: 0.6rem; text-align: center; border-top: 1px solid var(--border-glow);">
-    © 2050 AETHER INTELLIGENCE SYSTEMS | ALL SENSORS ENCRYPTED
-</footer>
+        // Speech APIs
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        const recognition = SpeechRecognition ? new SpeechRecognition() : null;
+        const synth = window.speechSynthesis;
 
+        function addLog(text, isAi = false) {
+            const div = document.createElement('div');
+            div.className = isAi ? 'msg ai-text' : 'msg';
+            div.innerText = isAi ? `AI >> ${text}` : `USER >> ${text}`;
+            logs.appendChild(div);
+            logs.scrollTop = logs.scrollHeight;
+        }
+
+        async function initCamera() {
+            try {
+                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+                video.srcObject = stream;
+                addLog("Neural Vision link established.");
+            } catch (e) {
+                addLog("Camera failed. Defaulting to front sensor.");
+                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                video.srcObject = stream;
+            }
+        }
+
+        // --- Voice Command Logic ---
+        function toggleMic() {
+            if (!recognition) return alert("Speech recognition not supported in this browser.");
+            
+            recognition.start();
+            micBtn.classList.add('mic-active');
+            addLog("Microphone listening...");
+
+            recognition.onresult = (event) => {
+                const transcript = event.results[0][0].transcript;
+                textInput.value = transcript;
+                micBtn.classList.remove('mic-active');
+                aiProcess(); // Auto-process after speaking
+            };
+
+            recognition.onerror = () => micBtn.classList.remove('mic-active');
+        }
+
+        // --- LLM Analysis Simulation ---
+        function aiProcess() {
+            const userMsg = textInput.value || "Scan surroundings";
+            addLog(userMsg);
+            
+            // Visual feedback
+            document.body.classList.add('ai-processing');
+            scanner.style.display = 'block';
+
+            // Simulate "Analyzing"
+            setTimeout(() => {
+                document.body.classList.remove('ai-processing');
+                scanner.style.display = 'none';
+
+                const responses = [
+                    "Camera feed analyzed. Multiple hardware nodes detected.",
+                    "Optimization complete. Applying 4-bit quantization to this environment.",
+                    "I see your request. Adjusting PC sound system for optimal feedback.",
+                    "Visual data confirmed. The futuristic grid is ready for deployment."
+                ];
+                const reply = responses[Math.floor(Math.random() * responses.length)];
+                
+                addLog(reply, true);
+                
+                // Speak the reply
+                const utterance = new SpeechSynthesisUtterance(reply);
+                utterance.pitch = 0.8;
+                utterance.rate = 1.0;
+                synth.speak(utterance);
+                
+                textInput.value = "";
+            }, 2000);
+        }
+    </script>
 </body>
 </html>
