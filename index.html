@@ -3,149 +3,149 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AETHER-OS | LOGIC SYNC</title>
+    <title>AETHER-OS | ONLINE CORE</title>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
     <style>
-        :root { --neon: #00f2ff; --bg: #010206; --glow: rgba(0, 242, 255, 0.3); }
+        :root { --neon: #00f2ff; --bio: #39ff14; --bg: #010206; }
         body { background: var(--bg); color: var(--neon); font-family: 'Consolas', monospace; margin: 0; overflow: hidden; height: 100vh; }
         
-        #v-engine { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; filter: brightness(0.4) contrast(1.1); }
+        #v-bg { position: fixed; top: 0; left: 0; width: 100%; height: 100%; z-index: -1; filter: brightness(0.4) contrast(1.2); }
         video { width: 100%; height: 100%; object-fit: cover; }
 
-        .hud { height: 100vh; display: grid; grid-template-rows: auto 1fr auto; padding: 25px; box-sizing: border-box; }
-        .terminal { background: rgba(0,0,0,0.8); border: 1px solid var(--neon); padding: 15px; overflow-y: auto; font-size: 0.8rem; border-radius: 4px; box-shadow: 0 0 15px var(--glow); }
+        .hud { height: 100vh; display: flex; flex-direction: column; padding: 25px; box-sizing: border-box; background: radial-gradient(circle, transparent 40%, #000 100%); }
+        .terminal { flex-grow: 1; border: 1px solid var(--neon); background: rgba(0,0,0,0.85); padding: 15px; overflow-y: auto; font-size: 0.8rem; margin: 15px 0; box-shadow: 0 0 15px rgba(0,242,255,0.1); }
         
-        .ai-status { display: flex; justify-content: space-between; font-size: 0.7rem; border-bottom: 1px solid var(--neon); padding-bottom: 8px; text-transform: uppercase; }
-        .ai-bubble { font-size: 1.5rem; color: #fff; text-shadow: 0 0 10px var(--neon); min-height: 100px; padding: 20px 0; }
+        .status-header { display: flex; justify-content: space-between; font-size: 0.7rem; letter-spacing: 2px; border-bottom: 1px solid var(--neon); padding-bottom: 10px; }
+        .ai-voice-out { font-size: 1.6rem; color: #fff; text-shadow: 0 0 10px var(--neon); min-height: 80px; transition: 0.3s; }
 
-        .btn-sync { width: 100%; padding: 22px; background: transparent; border: 2px solid var(--neon); color: var(--neon); font-weight: bold; cursor: pointer; letter-spacing: 3px; transition: 0.2s; }
-        .btn-sync:active { background: var(--neon); color: #000; transform: scale(0.97); }
+        .btn-engage { width: 100%; padding: 22px; background: rgba(0,242,255,0.05); border: 2px solid var(--neon); color: var(--neon); font-weight: bold; cursor: pointer; text-transform: uppercase; transition: 0.2s; letter-spacing: 3px; }
+        .btn-engage:active { transform: scale(0.96); background: var(--neon); color: #000; }
         
-        .sys-err { color: #ff0055; font-weight: bold; }
-        .sys-ok { color: #39ff14; }
+        .online-glow { color: var(--bio) !important; text-shadow: 0 0 15px var(--bio) !important; }
+        .log-bio { color: var(--bio); }
     </style>
 </head>
 <body>
 
-    <div id="v-engine"><video id="webcam" autoplay playsinline muted></video></div>
+    <div id="v-bg"><video id="webcam" autoplay playsinline muted></video></div>
 
     <div class="hud">
-        <div class="ai-status">
-            <div>Logic_Kernel: v9.0.0</div>
-            <div id="signal">SIGNAL: STANDBY</div>
+        <div class="status-header">
+            <div>LOGIC_UPGRADE: v10.0</div>
+            <div id="status-tag">STATUS: OFFLINE</div>
         </div>
 
-        <div class="terminal" id="console">>> LOGIC SENSORS OFFLINE. AWAITING SYNC...</div>
+        <div class="terminal" id="console">>> SYSTEM STANDBY. PRESS ENGAGE TO SYNC...</div>
         
-        <div class="ai-bubble" id="ai-text">AI: OFFLINE</div>
+        <div class="ai-voice-out" id="ai-text">AI: OFFLINE</div>
 
-        <button class="btn-sync" id="syncBtn" onclick="syncAllSystems()">Sync & Engage AI</button>
+        <button class="btn-engage" id="mainBtn" onclick="initializeAI()">Engage Neural Link</button>
     </div>
 
     <script>
         const video = document.getElementById('webcam');
-        const term = document.getElementById('console');
+        const consoleLog = document.getElementById('console');
         const aiText = document.getElementById('ai-text');
-        const signal = document.getElementById('signal');
+        const statusTag = document.getElementById('status-tag');
         const synth = window.speechSynthesis;
         
         let visionModel;
         let recognition;
-        
-        // --- LOGIC GATE STATES ---
-        let systemState = "IDLE"; // IDLE, LISTENING, THINKING, SPEAKING
+        let isSpeaking = false; 
 
-        function log(msg, status = "info") {
-            const color = status === "err" ? "sys-err" : (status === "ok" ? "sys-ok" : "");
-            term.innerHTML += `<div class="${color}">> [${new Date().toLocaleTimeString().split(' ')[0]}] ${msg}</div>`;
-            term.scrollTop = term.scrollHeight;
+        function log(msg, type = "") {
+            const cls = type === "bio" ? 'class="log-bio"' : '';
+            consoleLog.innerHTML += `<div ${cls}>> [${new Date().toLocaleTimeString().split(' ')[0]}] ${msg}</div>`;
+            consoleLog.scrollTop = consoleLog.scrollHeight;
         }
 
-        async function syncAllSystems() {
-            if(systemState !== "IDLE") return;
-            document.getElementById('syncBtn').style.display = 'none';
-            log("INITIATING LOGIC SYNCHRONIZATION...");
+        async function initializeAI() {
+            document.getElementById('mainBtn').style.display = 'none';
+            log("INITIATING HARDWARE SYNC...");
 
             try {
-                // 1. Synchronous Hardware Access
-                const stream = await navigator.mediaDevices.getUserMedia({ video: {facingMode: "environment"}, audio: true });
+                // 1. Sync Camera & Mic
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: "environment" }, 
+                    audio: true 
+                });
                 video.srcObject = stream;
-                
-                // 2. Neural Vision Pre-Fetch
-                log("LOADING VISION WEIGHTS...");
-                visionModel = await cocoSsd.load();
-                log("NEURAL CORE: ONLINE", "ok");
+                log("SENSORS SYNCED.");
 
-                // 3. Clear Audio Buffer & Start
-                synth.cancel();
-                speak("Logic synchronized. All 100 errors cleared. I am listening.");
+                // 2. Load the AI Model (Wait for this!)
+                log("LOADING NEURAL VISION BRAIN...");
+                visionModel = await cocoSsd.load();
                 
-                initVoiceKernel();
-                signal.innerText = "SIGNAL: LOCKED";
-                signal.style.color = "#39ff14";
+                // 3. Switch to ONLINE
+                log("NEURAL CORE LOADED.", "bio");
+                statusTag.innerText = "STATUS: ONLINE";
+                statusTag.style.color = "var(--bio)";
+                aiText.innerText = "AI: ONLINE";
+                aiText.classList.add("online-glow");
+
+                // 4. Force First Reply
+                synth.cancel();
+                speak("Systems analyzed. Hardware is optimized. I am now online and listening.");
+                
+                // 5. Start the perpetual mic loop
+                startListening();
 
             } catch (err) {
-                log(`SYNC_FAILED: ${err.message}`, "err");
-                systemState = "IDLE";
+                log(`CRITICAL FAIL: ${err.message}`, "err");
+                aiText.innerText = "AI: ERROR";
             }
         }
 
-        function initVoiceKernel() {
+        function startListening() {
             const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
             recognition = new SpeechRec();
-            recognition.continuous = false; // "False" is critical for mobile logic stability
+            recognition.continuous = false; 
             
-            recognition.onstart = () => { 
-                systemState = "LISTENING";
-                log("MIC_KERNEL: CAPTURING..."); 
-            };
+            recognition.onstart = () => { log("MIC: ACTIVE"); };
             
             recognition.onresult = async (e) => {
                 const text = e.results[0][0].transcript;
-                log(`DATA_IN: ${text.toUpperCase()}`, "ok");
-                await processIntelligence(text);
+                log(`HEARD: ${text.toUpperCase()}`, "bio");
+                processAndReply(text);
             };
 
             recognition.onend = () => {
-                // LOGIC GATE: Only restart if the system isn't currently speaking or thinking
-                if (systemState === "LISTENING" || systemState === "IDLE") {
-                    setTimeout(() => { 
-                        try { recognition.start(); } catch(e) {} 
-                    }, 400);
+                // Safety logic: only restart if we aren't talking
+                if (!isSpeaking) {
+                    setTimeout(() => { try { recognition.start(); } catch(e) {} }, 400);
                 }
             };
 
             recognition.start();
         }
 
-        async function processIntelligence(query) {
-            systemState = "THINKING";
-            aiText.innerText = "AI: ANALYZING...";
-            
+        async function processAndReply(query) {
+            aiText.innerText = "AI: THINKING...";
             const found = await visionModel.detect(video);
-            let context = found.length > 0 ? `I see a ${found[0].class}. ` : "";
-            
-            // Core Response Logic
-            const reply = context + `Regarding ${query}, the logic errors have been purged. System is stable.`;
-            aiText.innerText = `AI: ${reply}`;
-            speak(reply);
+            let response = "";
+
+            if (found.length > 0) {
+                response = `I see a ${found[0].class}. Regarding ${query}, the analysis is complete.`;
+            } else {
+                response = `I heard you say ${query}. The environment is clear.`;
+            }
+
+            aiText.innerText = `AI: ${response}`;
+            speak(response);
         }
 
         function speak(text) {
-            systemState = "SPEAKING";
-            try { recognition.stop(); } catch(e) {} // Force hardware release
+            isSpeaking = true;
+            try { recognition.stop(); } catch(e) {}
 
             const utterance = new SpeechSynthesisUtterance(text);
             utterance.pitch = 0.9;
-            
+            utterance.onstart = () => { isSpeaking = true; };
             utterance.onend = () => {
-                log("SPEECH_DONE: RE-SYNCING MIC...");
-                systemState = "IDLE";
-                // The recognition.onend will trigger and safely restart the mic
-                setTimeout(() => { if(systemState === "IDLE") recognition.start(); }, 500);
+                isSpeaking = false;
+                log("RE-ENGAGING SENSORS...");
             };
-            
             synth.speak(utterance);
         }
     </script>
