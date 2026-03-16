@@ -3,217 +3,230 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AETHER-OS | HYPER-INTERACTIVE AI</title>
+    <title>AETHER-OS | SENSOR CORE</title>
     <style>
         :root {
             --neon-blue: #00f2ff;
-            --neon-purple: #bc00ff;
-            --bg-dark: #02050a;
-            --glass: rgba(0, 242, 255, 0.07);
+            --neon-pink: #ff00ea;
+            --bg: #010409;
+            --panel-glass: rgba(0, 242, 255, 0.05);
         }
 
-        body, html {
-            margin: 0; padding: 0;
-            background: var(--bg-dark);
+        body {
+            background: var(--bg);
             color: var(--neon-blue);
             font-family: 'Segoe UI', sans-serif;
-            height: 100vh; overflow: hidden;
+            margin: 0;
+            overflow: hidden;
+            height: 100vh;
         }
 
-        /* --- Holographic Camera Feed --- */
-        #camera-wrapper {
-            position: fixed;
+        /* Full Screen Neural Vision */
+        #vision-stream {
+            position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
             z-index: -1;
-            filter: contrast(1.2) brightness(0.8);
+            background: #000;
         }
 
         video {
             width: 100%; height: 100%; object-fit: cover;
-            transition: all 0.5s ease;
+            filter: brightness(0.7) contrast(1.2) hue-rotate(180deg);
+            opacity: 0.6;
+            transition: 0.5s;
         }
 
-        .ai-processing video {
-            filter: hue-rotate(280deg) saturate(2) sepia(0.3);
-        }
-
-        /* --- Interface HUD --- */
-        .hud-container {
-            display: grid;
-            grid-template-columns: 400px 1fr;
-            height: 100vh;
-            padding: 30px;
-            box-sizing: border-box;
-            background: radial-gradient(circle at center, transparent, rgba(2, 5, 10, 0.8));
-        }
-
-        .control-panel {
-            background: var(--glass);
-            border: 1px solid var(--neon-blue);
-            backdrop-filter: blur(20px);
-            padding: 25px;
+        /* Interface Overlay */
+        .gui-layer {
             display: flex;
             flex-direction: column;
-            border-radius: 20px;
-            box-shadow: 0 0 50px rgba(0, 242, 255, 0.1);
+            height: 100%;
+            padding: 20px;
+            box-sizing: border-box;
+            background: radial-gradient(circle, transparent 40%, var(--bg) 100%);
         }
 
-        .chat-log {
+        .side-bar {
+            width: 350px;
+            background: var(--panel-glass);
+            border: 1px solid var(--neon-blue);
+            backdrop-filter: blur(15px);
+            padding: 20px;
+            border-radius: 10px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 0 20px rgba(0, 242, 255, 0.1);
+        }
+
+        .terminal {
             flex-grow: 1;
-            overflow-y: auto;
-            margin: 20px 0;
             font-family: 'Courier New', monospace;
-            font-size: 0.9rem;
+            font-size: 0.8rem;
+            margin: 15px 0;
+            overflow-y: auto;
+            color: var(--neon-blue);
+            text-shadow: 0 0 5px var(--neon-blue);
         }
 
-        .msg { margin-bottom: 15px; line-height: 1.4; border-bottom: 1px solid rgba(0, 242, 255, 0.1); padding-bottom: 5px; }
-        .ai-text { color: var(--neon-purple); text-shadow: 0 0 5px var(--neon-purple); }
-
-        /* --- Interaction Elements --- */
-        .input-group { display: flex; flex-direction: column; gap: 10px; }
-        
-        input {
-            background: rgba(0,0,0,0.5); border: 1px solid var(--neon-blue);
-            color: var(--neon-blue); padding: 15px; border-radius: 10px; outline: none;
+        .status-dot {
+            height: 8px; width: 8px; border-radius: 50%;
+            display: inline-block; margin-right: 5px;
+            background: #555;
         }
 
-        .btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .active { background: #0f0; box-shadow: 0 0 10px #0f0; }
 
-        button {
-            background: transparent; border: 1px solid var(--neon-blue);
-            color: var(--neon-blue); padding: 12px; cursor: pointer;
-            text-transform: uppercase; font-weight: bold; transition: 0.3s;
+        .btn-action {
+            background: transparent;
+            border: 1px solid var(--neon-blue);
+            color: var(--neon-blue);
+            padding: 15px;
+            cursor: pointer;
+            font-weight: bold;
+            text-transform: uppercase;
+            margin-top: 10px;
+            transition: 0.2s;
         }
 
-        button:hover { background: var(--neon-blue); color: #000; box-shadow: 0 0 20px var(--neon-blue); }
-        .mic-active { border-color: var(--neon-purple); color: var(--neon-purple); animation: blink 1s infinite; }
-
-        @keyframes blink { 0% { opacity: 1; } 50% { opacity: 0.5; } 100% { opacity: 1; } }
-
-        .scanning-line {
-            position: absolute; width: 100%; height: 4px;
-            background: var(--neon-purple); box-shadow: 0 0 20px var(--neon-purple);
-            top: -10px; display: none; z-index: 10;
-            animation: scanMove 2s infinite linear;
+        .btn-action:hover {
+            background: var(--neon-blue);
+            color: #000;
         }
 
-        @keyframes scanMove { 0% { top: 0%; } 100% { top: 100%; } }
+        .btn-mic {
+            border-color: var(--neon-pink);
+            color: var(--neon-pink);
+        }
+
+        .btn-mic:hover {
+            background: var(--neon-pink);
+            color: #000;
+        }
+
+        /* Scanning HUD */
+        #scanner {
+            position: absolute;
+            width: 100%; height: 2px;
+            background: var(--neon-blue);
+            box-shadow: 0 0 15px var(--neon-blue);
+            display: none;
+            animation: scanLoop 2s infinite linear;
+        }
+
+        @keyframes scanLoop { 0% { top: 0; } 100% { top: 100%; } }
     </style>
 </head>
 <body>
 
-    <div id="camera-wrapper">
-        <video id="vid" autoplay playsinline></video>
-        <div id="scanner" class="scanning-line"></div>
+    <div id="vision-stream">
+        <video id="v-feed" autoplay playsinline></video>
+        <div id="scanner"></div>
     </div>
 
-    <div class="hud-container">
-        <div class="control-panel">
-            <h1 style="margin: 0; letter-spacing: 5px; color: var(--neon-blue);">AETHER <span style="font-weight: 200;">OS</span></h1>
-            <p style="font-size: 0.7rem; color: var(--neon-purple);">CORE: LLM-OPTIMIZED [2050-X]</p>
+    <div class="gui-layer">
+        <div class="side-bar">
+            <h2 style="margin: 0; letter-spacing: 2px;">AETHER CORE</h2>
+            <p style="font-size: 0.7rem; opacity: 0.6;">VERSION 2050.v4 // NO-LINK MODE</p>
 
-            <div class="chat-log" id="logs">
-                <div class="msg">>> SYSTEM READY. INITIALIZE SENSORS.</div>
+            <div style="margin-top: 10px; font-size: 0.8rem;">
+                <div><span id="dot-cam" class="status-dot"></span> CAMERA</div>
+                <div><span id="dot-mic" class="status-dot"></span> MICROPHONE</div>
+                <div><span id="dot-snd" class="status-dot"></span> SOUND SYSTEM</div>
             </div>
 
-            <div class="input-group">
-                <input type="text" id="textInput" placeholder="Type command...">
-                <div class="btn-row">
-                    <button onclick="initCamera()">Start Vision</button>
-                    <button id="micBtn" onclick="toggleMic()">Microphone</button>
-                </div>
-                <button style="border-color: var(--neon-purple); color: var(--neon-purple);" onclick="aiProcess()">Analyze Environment</button>
+            <div class="terminal" id="term">
+                > SYSTEM READY...<br>
+                > AWAITING SENSOR ACTIVATION...
             </div>
-        </div>
 
-        <div style="text-align: right; padding: 20px; pointer-events: none;">
-            <div>DATA_CORE: <span id="cpu">92%</span></div>
-            <div>VOICE_ENGINE: <span id="v-status">ONLINE</span></div>
+            <input type="text" id="cmdInput" placeholder="Ask AI..." style="background:none; border:1px solid #333; color:var(--neon-blue); padding:10px; margin-bottom:10px;">
+
+            <button class="btn-action" onclick="requestAllPermissions()">1. Activate Sensors</button>
+            <button class="btn-action btn-mic" onclick="listenMode()">2. Speak to AI</button>
+            <button class="btn-action" style="border-color: #fff; color: #fff;" onclick="runAnalysis()">3. Analyze & Output</button>
         </div>
     </div>
 
     <script>
-        const video = document.getElementById('vid');
-        const logs = document.getElementById('logs');
-        const textInput = document.getElementById('textInput');
+        const video = document.getElementById('v-feed');
+        const term = document.getElementById('term');
         const scanner = document.getElementById('scanner');
-        const micBtn = document.getElementById('micBtn');
-
-        // Speech APIs
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-        const recognition = SpeechRecognition ? new SpeechRecognition() : null;
         const synth = window.speechSynthesis;
 
-        function addLog(text, isAi = false) {
-            const div = document.createElement('div');
-            div.className = isAi ? 'msg ai-text' : 'msg';
-            div.innerText = isAi ? `AI >> ${text}` : `USER >> ${text}`;
-            logs.appendChild(div);
-            logs.scrollTop = logs.scrollHeight;
+        function log(msg) {
+            term.innerHTML += `> ${msg}<br>`;
+            term.scrollTop = term.scrollHeight;
         }
 
-        async function initCamera() {
+        // Fix: Unified Permission Request
+        async function requestAllPermissions() {
+            log("REQUESTING SENSOR PERMISSIONS...");
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+                // Request Camera & Microphone simultaneously
+                const stream = await navigator.mediaDevices.getUserMedia({ 
+                    video: { facingMode: "environment" }, 
+                    audio: true 
+                });
+                
                 video.srcObject = stream;
-                addLog("Neural Vision link established.");
-            } catch (e) {
-                addLog("Camera failed. Defaulting to front sensor.");
-                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-                video.srcObject = stream;
+                document.getElementById('dot-cam').classList.add('active');
+                document.getElementById('dot-mic').classList.add('active');
+                document.getElementById('dot-snd').classList.add('active');
+                
+                log("CAMERA: GRANTED");
+                log("MICROPHONE: GRANTED");
+                log("SOUND SYSTEM: CALIBRATED");
+                
+                // Audio Context Resume (fixes sound permission error)
+                if (synth.speaking) synth.cancel();
+                const welcome = new SpeechSynthesisUtterance("Sensors online. Aether core ready.");
+                welcome.pitch = 0.8;
+                synth.speak(welcome);
+
+            } catch (err) {
+                log("ERROR: PERMISSION DENIED - " + err.message);
+                alert("Please enable Camera and Microphone access in your browser settings.");
             }
         }
 
-        // --- Voice Command Logic ---
-        function toggleMic() {
-            if (!recognition) return alert("Speech recognition not supported in this browser.");
-            
+        // Microphone Logic
+        function listenMode() {
+            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRecognition) return log("VOICE NOT SUPPORTED");
+
+            const recognition = new SpeechRecognition();
             recognition.start();
-            micBtn.classList.add('mic-active');
-            addLog("Microphone listening...");
+            log("LISTENING...");
 
-            recognition.onresult = (event) => {
-                const transcript = event.results[0][0].transcript;
-                textInput.value = transcript;
-                micBtn.classList.remove('mic-active');
-                aiProcess(); // Auto-process after speaking
+            recognition.onresult = (e) => {
+                const text = e.results[0][0].transcript;
+                document.getElementById('cmdInput').value = text;
+                log("INPUT: " + text);
+                runAnalysis();
             };
-
-            recognition.onerror = () => micBtn.classList.remove('mic-active');
         }
 
-        // --- LLM Analysis Simulation ---
-        function aiProcess() {
-            const userMsg = textInput.value || "Scan surroundings";
-            addLog(userMsg);
-            
-            // Visual feedback
-            document.body.classList.add('ai-processing');
+        // Analysis & Sound Output
+        function runAnalysis() {
+            const query = document.getElementById('cmdInput').value || "Auto-Scan";
             scanner.style.display = 'block';
+            video.style.filter = "hue-rotate(90deg) saturate(2) brightness(1)";
+            log("ANALYZING PIXELS...");
 
-            // Simulate "Analyzing"
             setTimeout(() => {
-                document.body.classList.remove('ai-processing');
                 scanner.style.display = 'none';
+                video.style.filter = "brightness(0.7) contrast(1.2) hue-rotate(180deg)";
+                
+                const response = "Environment analyzed. Hardware configuration optimized for futuristic code deployment.";
+                log("AI RESPONSE: " + response);
 
-                const responses = [
-                    "Camera feed analyzed. Multiple hardware nodes detected.",
-                    "Optimization complete. Applying 4-bit quantization to this environment.",
-                    "I see your request. Adjusting PC sound system for optimal feedback.",
-                    "Visual data confirmed. The futuristic grid is ready for deployment."
-                ];
-                const reply = responses[Math.floor(Math.random() * responses.length)];
-                
-                addLog(reply, true);
-                
-                // Speak the reply
-                const utterance = new SpeechSynthesisUtterance(reply);
+                const utterance = new SpeechSynthesisUtterance(response);
                 utterance.pitch = 0.8;
                 utterance.rate = 1.0;
                 synth.speak(utterance);
                 
-                textInput.value = "";
-            }, 2000);
+                document.getElementById('cmdInput').value = "";
+            }, 1800);
         }
     </script>
 </body>
