@@ -3,57 +3,55 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AI HOLOGRAM V4 - VIVID COLOR</title>
+    <title>AI PROJECTOR PRO - LiDAR MODE</title>
     <style>
-        :root { --glow: #00f2ff; --neon-pink: #ff00ff; --bg: #000; }
-        body { margin: 0; background: var(--bg); overflow: hidden; font-family: 'Segoe UI', sans-serif; color: var(--glow); }
+        :root { --projector-beam: rgba(0, 255, 255, 0.4); --ui-cyan: #00f2ff; }
+        body { margin: 0; background: #000; overflow: hidden; font-family: 'Orbitron', sans-serif; }
 
-        #ui-layer {
-            position: absolute; width: 100%; height: 100%;
-            pointer-events: none; z-index: 100;
-        }
-
-        /* FIXED: Removed grayscale filter for colorful camera */
+        /* Full Color Back Camera */
         video {
             position: fixed; width: 100vw; height: 100vh;
-            object-fit: cover; transform: scaleX(-1);
-            filter: brightness(1.1) contrast(1.1); /* Slightly boost color & light */
+            object-fit: cover;
+            filter: contrast(1.2) saturate(1.2); /* Enhanced for Projector look */
         }
 
-        canvas { position: fixed; top: 0; left: 0; z-index: 50; touch-action: none; }
+        canvas { position: fixed; top: 0; left: 0; z-index: 10; mix-blend-mode: screen; }
 
-        #permission-screen {
-            position: fixed; inset: 0; background: #000;
+        #overlay {
+            position: absolute; inset: 0; z-index: 100; pointer-events: none;
+            border: 1px solid rgba(0, 242, 255, 0.2);
+            box-shadow: inset 0 0 100px rgba(0,0,0,0.5);
+        }
+
+        .hud-data {
+            position: absolute; top: 20px; left: 20px; color: var(--ui-cyan);
+            font-size: 10px; letter-spacing: 1px; line-height: 1.5;
+        }
+
+        #init-screen {
+            position: fixed; inset: 0; z-index: 1000; background: #000;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
-            z-index: 1000; text-align: center;
         }
 
-        button {
-            background: transparent; border: 2px solid var(--glow);
-            color: var(--glow); padding: 15px 40px; font-size: 1.2rem;
-            cursor: pointer; text-transform: uppercase; letter-spacing: 2px;
-        }
-
-        .status-bar {
-            position: absolute; top: 20px; right: 20px;
-            background: rgba(0, 0, 0, 0.5); padding: 10px;
-            border-right: 4px solid var(--neon-pink);
-            font-size: 12px;
+        .btn-launch {
+            background: none; border: 2px solid var(--ui-cyan); color: var(--ui-cyan);
+            padding: 20px 40px; cursor: pointer; font-weight: bold;
+            box-shadow: 0 0 20px var(--projector-beam);
         }
     </style>
 </head>
 <body>
 
-    <div id="permission-screen">
-        <h1 style="color:white">NEURAL INTERFACE</h1>
-        <button id="start-btn">ACTIVATE SYSTEM</button>
+    <div id="init-screen">
+        <h2 style="color:white; margin-bottom:30px;">AI MULTIMEDIA PROJECTOR</h2>
+        <button class="btn-launch" onclick="startProjector()">ENABLE BACK CAMERA & LiDAR</button>
     </div>
 
-    <div id="ui-layer">
-        <div class="status-bar">
-            SYSTEM: ONLINE<br>
-            CAM: VIVID_COLOR_MODE<br>
-            AI_REF: 2050.v2
+    <div id="overlay">
+        <div class="hud-data">
+            LENS: BACK_WIDE_ANGLE<br>
+            MODE: DEPTH_PROJECTOR_2050<br>
+            STATUS: <span id="depth-val">SCANNING...</span>
         </div>
     </div>
 
@@ -64,98 +62,113 @@
     const v = document.getElementById('v');
     const c = document.getElementById('c');
     const ctx = c.getContext('2d');
-    const startBtn = document.getElementById('start-btn');
+    const depthVal = document.getElementById('depth-val');
 
     let mouse = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
     let smooth = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
     let frame = 0;
 
     function resize() {
-        const dpr = window.devicePixelRatio || 1;
-        c.width = window.innerWidth * dpr;
-        c.height = window.innerHeight * dpr;
-        ctx.scale(dpr, dpr);
+        c.width = window.innerWidth * window.devicePixelRatio;
+        c.height = window.innerHeight * window.devicePixelRatio;
+        ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
     }
     window.addEventListener('resize', resize);
     resize();
 
-    async function initSystem() {
+    async function startProjector() {
         try {
-            // Requesting high-quality color video
+            // UPDATED: Forced use of BACK camera ("environment")
             const stream = await navigator.mediaDevices.getUserMedia({ 
-                video: { facingMode: "user", width: 1280, height: 720 }, 
-                audio: false 
+                video: { 
+                    facingMode: { exact: "environment" },
+                    width: { ideal: 1920 },
+                    height: { ideal: 1080 }
+                } 
             });
             v.srcObject = stream;
-            document.getElementById('permission-screen').style.display = 'none';
-            animate();
-        } catch (err) {
-            alert("Camera Access Required for Hologram");
+            document.getElementById('init-screen').style.display = 'none';
+            render();
+        } catch (e) {
+            // Fallback for desktop or if 'exact' environment fails
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            v.srcObject = stream;
+            document.getElementById('init-screen').style.display = 'none';
+            render();
         }
     }
 
-    const updateTarget = (e) => {
+    // Touch Interaction for Projection Target
+    const setTarget = (e) => {
         const t = e.touches ? e.touches[0] : e;
         mouse.x = t.clientX;
         mouse.y = t.clientY;
     };
-    window.addEventListener('mousemove', updateTarget);
-    window.addEventListener('touchstart', updateTarget);
-    window.addEventListener('touchmove', updateTarget);
+    window.addEventListener('mousemove', setTarget);
+    window.addEventListener('touchstart', setTarget);
+    window.addEventListener('touchmove', setTarget);
 
-    function drawHologram(x, y) {
+    function drawLiDARProjector(x, y) {
         ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
         
-        smooth.x += (x - smooth.x) * 0.15;
-        smooth.y += (y - smooth.y) * 0.15;
+        // Smoothing Logic
+        smooth.x += (x - smooth.x) * 0.1;
+        smooth.y += (y - smooth.y) * 0.1;
+        frame += 0.03;
 
-        frame += 0.04;
         const sX = smooth.x;
         const sY = smooth.y;
 
-        // 1. Colorful Outer Ring (Gradient)
-        ctx.lineWidth = 3;
-        ctx.shadowBlur = 20;
-        ctx.shadowColor = '#ff00ff';
-        ctx.strokeStyle = '#ff00ff'; 
-        
+        // Simulated Depth Logic: The hologram grows/shrinks slightly to simulate LiDAR range
+        const depthScale = 1 + Math.sin(frame * 0.5) * 0.1;
+        depthVal.innerText = (depthScale * 4.2).toFixed(2) + "m";
+
+        // 1. The "Projector Beam" lines (coming from the corner of the screen)
         ctx.beginPath();
-        ctx.arc(sX, sY, 70, 0, Math.PI * 2);
+        ctx.moveTo(0, 0); 
+        ctx.lineTo(sX, sY);
+        ctx.strokeStyle = 'rgba(0, 255, 255, 0.1)';
         ctx.stroke();
 
-        // 2. Rotating Inner AI Matrix (Cyan)
-        ctx.shadowColor = '#00f2ff';
-        ctx.strokeStyle = '#00f2ff';
+        // 2. Main Hologram Core
         ctx.save();
         ctx.translate(sX, sY);
-        ctx.rotate(-frame * 2);
-        for(let i=0; i<8; i++) {
-            ctx.rotate(Math.PI / 4);
-            ctx.strokeRect(-40, -40, 80, 80);
+        ctx.scale(depthScale, depthScale);
+        
+        // Outer Hexagon
+        ctx.beginPath();
+        for(let i=0; i<6; i++) {
+            ctx.rotate(Math.PI / 3);
+            ctx.lineTo(80, 0);
         }
+        ctx.closePath();
+        ctx.strokeStyle = '#00f2ff';
+        ctx.lineWidth = 2;
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = '#00f2ff';
+        ctx.stroke();
+
+        // Inner Spinning "LiDAR" Rings
+        ctx.rotate(frame * 2);
+        ctx.beginPath();
+        ctx.arc(0, 0, 40, 0, Math.PI * 1.5);
+        ctx.stroke();
+        
         ctx.restore();
 
-        // 3. Floating Data Particles
-        ctx.fillStyle = '#fff';
-        for(let i=0; i<5; i++) {
-            let px = sX + Math.cos(frame + i) * 100;
-            let py = sY + Math.sin(frame + i) * 100;
-            ctx.fillRect(px, py, 2, 2);
-        }
-
-        // 4. ID Label
-        ctx.shadowBlur = 0;
-        ctx.font = "bold 14px monospace";
-        ctx.fillStyle = "#00f2ff";
-        ctx.fillText(`AI_TARGET_LOC: ${Math.round(sX)},${Math.round(sY)}`, sX + 85, sY + 5);
+        // 3. UI Scanning Lines
+        ctx.strokeStyle = 'rgba(0, 255, 255, 0.3)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(sX - 150, sY); ctx.lineTo(sX + 150, sY);
+        ctx.moveTo(sX, sY - 150); ctx.lineTo(sX, sY + 150);
+        ctx.stroke();
     }
 
-    function animate() {
-        drawHologram(mouse.x, mouse.y);
-        requestAnimationFrame(animate);
+    function render() {
+        drawLiDARProjector(mouse.x, mouse.y);
+        requestAnimationFrame(render);
     }
-
-    startBtn.onclick = initSystem;
 </script>
 </body>
 </html>
