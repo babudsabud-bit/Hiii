@@ -3,230 +3,223 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AETHER-OS | SENSOR CORE</title>
+    <title>AETHER-OS | ALWAYS-ON AI</title>
     <style>
         :root {
             --neon-blue: #00f2ff;
-            --neon-pink: #ff00ea;
-            --bg: #010409;
-            --panel-glass: rgba(0, 242, 255, 0.05);
+            --neon-green: #39ff14;
+            --bg: #010206;
         }
 
         body {
             background: var(--bg);
             color: var(--neon-blue);
-            font-family: 'Segoe UI', sans-serif;
+            font-family: 'Consolas', monospace;
             margin: 0;
             overflow: hidden;
             height: 100vh;
         }
 
-        /* Full Screen Neural Vision */
-        #vision-stream {
+        /* Full Screen Vision */
+        #vision-bg {
             position: absolute;
             top: 0; left: 0; width: 100%; height: 100%;
             z-index: -1;
-            background: #000;
         }
 
         video {
             width: 100%; height: 100%; object-fit: cover;
-            filter: brightness(0.7) contrast(1.2) hue-rotate(180deg);
-            opacity: 0.6;
-            transition: 0.5s;
+            filter: contrast(1.1) brightness(0.6) saturate(0.5);
+            transition: filter 0.3s;
+        }
+
+        .ai-thinking video {
+            filter: hue-rotate(120deg) brightness(0.9) saturate(2);
         }
 
         /* Interface Overlay */
-        .gui-layer {
-            display: flex;
-            flex-direction: column;
+        .hud-layer {
             height: 100%;
-            padding: 20px;
-            box-sizing: border-box;
-            background: radial-gradient(circle, transparent 40%, var(--bg) 100%);
-        }
-
-        .side-bar {
-            width: 350px;
-            background: var(--panel-glass);
-            border: 1px solid var(--neon-blue);
-            backdrop-filter: blur(15px);
-            padding: 20px;
-            border-radius: 10px;
+            padding: 40px;
             display: flex;
             flex-direction: column;
-            box-shadow: 0 0 20px rgba(0, 242, 255, 0.1);
+            justify-content: space-between;
+            background: radial-gradient(circle, transparent 30%, rgba(1, 2, 6, 0.9) 100%);
         }
 
-        .terminal {
-            flex-grow: 1;
-            font-family: 'Courier New', monospace;
-            font-size: 0.8rem;
-            margin: 15px 0;
-            overflow-y: auto;
-            color: var(--neon-blue);
-            text-shadow: 0 0 5px var(--neon-blue);
-        }
-
-        .status-dot {
-            height: 8px; width: 8px; border-radius: 50%;
-            display: inline-block; margin-right: 5px;
-            background: #555;
-        }
-
-        .active { background: #0f0; box-shadow: 0 0 10px #0f0; }
-
-        .btn-action {
-            background: transparent;
+        .status-box {
             border: 1px solid var(--neon-blue);
-            color: var(--neon-blue);
-            padding: 15px;
-            cursor: pointer;
+            padding: 20px;
+            width: 300px;
+            background: rgba(0, 242, 255, 0.05);
+            backdrop-filter: blur(10px);
+        }
+
+        .pulse-indicator {
+            height: 12px; width: 12px; border-radius: 50%;
+            background: var(--neon-green);
+            display: inline-block;
+            margin-right: 10px;
+            box-shadow: 0 0 15px var(--neon-green);
+            animation: pulse 1.5s infinite;
+        }
+
+        @keyframes pulse {
+            0% { transform: scale(1); opacity: 1; }
+            50% { transform: scale(1.3); opacity: 0.5; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        .chat-stream {
+            font-size: 1.1rem;
+            max-width: 600px;
+            text-shadow: 0 0 10px var(--neon-blue);
+            line-height: 1.6;
+        }
+
+        .listening-status {
+            color: var(--neon-green);
             font-weight: bold;
-            text-transform: uppercase;
+            letter-spacing: 2px;
             margin-top: 10px;
-            transition: 0.2s;
         }
 
-        .btn-action:hover {
-            background: var(--neon-blue);
-            color: #000;
+        /* Scanner */
+        #scan-laser {
+            position: absolute; width: 100%; height: 3px;
+            background: var(--neon-green);
+            box-shadow: 0 0 20px var(--neon-green);
+            top: -10px; display: none;
+            animation: scanLine 2.5s infinite linear;
         }
 
-        .btn-mic {
-            border-color: var(--neon-pink);
-            color: var(--neon-pink);
-        }
+        @keyframes scanLine { 0% { top: 0; } 100% { top: 100%; } }
 
-        .btn-mic:hover {
-            background: var(--neon-pink);
-            color: #000;
+        .btn-init {
+            padding: 20px 40px;
+            background: transparent;
+            border: 2px solid var(--neon-blue);
+            color: var(--neon-blue);
+            font-size: 1.2rem;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 5px;
         }
-
-        /* Scanning HUD */
-        #scanner {
-            position: absolute;
-            width: 100%; height: 2px;
-            background: var(--neon-blue);
-            box-shadow: 0 0 15px var(--neon-blue);
-            display: none;
-            animation: scanLoop 2s infinite linear;
-        }
-
-        @keyframes scanLoop { 0% { top: 0; } 100% { top: 100%; } }
     </style>
 </head>
 <body>
 
-    <div id="vision-stream">
-        <video id="v-feed" autoplay playsinline></video>
-        <div id="scanner"></div>
+    <div id="vision-bg">
+        <video id="v-stream" autoplay playsinline></video>
+        <div id="scan-laser"></div>
     </div>
 
-    <div class="gui-layer">
-        <div class="side-bar">
-            <h2 style="margin: 0; letter-spacing: 2px;">AETHER CORE</h2>
-            <p style="font-size: 0.7rem; opacity: 0.6;">VERSION 2050.v4 // NO-LINK MODE</p>
-
-            <div style="margin-top: 10px; font-size: 0.8rem;">
-                <div><span id="dot-cam" class="status-dot"></span> CAMERA</div>
-                <div><span id="dot-mic" class="status-dot"></span> MICROPHONE</div>
-                <div><span id="dot-snd" class="status-dot"></span> SOUND SYSTEM</div>
-            </div>
-
-            <div class="terminal" id="term">
-                > SYSTEM READY...<br>
-                > AWAITING SENSOR ACTIVATION...
-            </div>
-
-            <input type="text" id="cmdInput" placeholder="Ask AI..." style="background:none; border:1px solid #333; color:var(--neon-blue); padding:10px; margin-bottom:10px;">
-
-            <button class="btn-action" onclick="requestAllPermissions()">1. Activate Sensors</button>
-            <button class="btn-action btn-mic" onclick="listenMode()">2. Speak to AI</button>
-            <button class="btn-action" style="border-color: #fff; color: #fff;" onclick="runAnalysis()">3. Analyze & Output</button>
+    <div class="hud-layer">
+        <div class="status-box">
+            <div><span class="pulse-indicator"></span> ALWAYS-ON ACTIVE</div>
+            <div class="listening-status" id="mic-status">INITIALIZING...</div>
         </div>
+
+        <div id="init-screen" style="position: absolute; top:50%; left:50%; transform:translate(-50%,-50%);">
+            <button class="btn-init" onclick="startAlwaysOn()">Activate AI Assistant</button>
+        </div>
+
+        <div class="chat-stream" id="output">
+            </div>
     </div>
 
     <script>
-        const video = document.getElementById('v-feed');
-        const term = document.getElementById('term');
-        const scanner = document.getElementById('scanner');
+        const video = document.getElementById('v-stream');
+        const output = document.getElementById('output');
+        const micStatus = document.getElementById('mic-status');
+        const scanLaser = document.getElementById('scan-laser');
         const synth = window.speechSynthesis;
 
-        function log(msg) {
-            term.innerHTML += `> ${msg}<br>`;
-            term.scrollTop = term.scrollHeight;
-        }
+        let recognition;
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
-        // Fix: Unified Permission Request
-        async function requestAllPermissions() {
-            log("REQUESTING SENSOR PERMISSIONS...");
+        async function startAlwaysOn() {
+            document.getElementById('init-screen').style.display = 'none';
+            
             try {
-                // Request Camera & Microphone simultaneously
                 const stream = await navigator.mediaDevices.getUserMedia({ 
                     video: { facingMode: "environment" }, 
                     audio: true 
                 });
-                
                 video.srcObject = stream;
-                document.getElementById('dot-cam').classList.add('active');
-                document.getElementById('dot-mic').classList.add('active');
-                document.getElementById('dot-snd').classList.add('active');
-                
-                log("CAMERA: GRANTED");
-                log("MICROPHONE: GRANTED");
-                log("SOUND SYSTEM: CALIBRATED");
-                
-                // Audio Context Resume (fixes sound permission error)
-                if (synth.speaking) synth.cancel();
-                const welcome = new SpeechSynthesisUtterance("Sensors online. Aether core ready.");
-                welcome.pitch = 0.8;
-                synth.speak(welcome);
+
+                if (SpeechRecognition) {
+                    recognition = new SpeechRecognition();
+                    recognition.continuous = false; // We restart manually to keep it "Always On"
+                    recognition.interimResults = false;
+                    
+                    recognition.onstart = () => {
+                        micStatus.innerText = "LISTENING...";
+                        micStatus.style.color = "var(--neon-green)";
+                    };
+
+                    recognition.onresult = (event) => {
+                        const transcript = event.results[0][0].transcript;
+                        handleAIResponse(transcript);
+                    };
+
+                    recognition.onend = () => {
+                        // This is the "Always-On" core: restart if not currently speaking
+                        if (!synth.speaking) {
+                            recognition.start();
+                        }
+                    };
+
+                    recognition.start();
+                    speak("Always on mode enabled. I am listening.");
+                }
 
             } catch (err) {
-                log("ERROR: PERMISSION DENIED - " + err.message);
-                alert("Please enable Camera and Microphone access in your browser settings.");
+                alert("Please grant camera and microphone access.");
             }
         }
 
-        // Microphone Logic
-        function listenMode() {
-            const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-            if (!SpeechRecognition) return log("VOICE NOT SUPPORTED");
+        function handleAIResponse(input) {
+            output.innerHTML = `<span style="color:white;">User:</span> ${input}`;
+            
+            // Visual Processing
+            document.body.classList.add('ai-thinking');
+            scanLaser.style.display = 'block';
+            micStatus.innerText = "ANALYZING...";
+            micStatus.style.color = "orange";
 
-            const recognition = new SpeechRecognition();
-            recognition.start();
-            log("LISTENING...");
-
-            recognition.onresult = (e) => {
-                const text = e.results[0][0].transcript;
-                document.getElementById('cmdInput').value = text;
-                log("INPUT: " + text);
-                runAnalysis();
-            };
+            // Advanced Response Logic (Simulated LLM)
+            setTimeout(() => {
+                const responses = [
+                    "I have analyzed the visual data. The environment is stable.",
+                    "Processing confirmed. I have optimized the robotic nodes for your query.",
+                    "Based on the camera feed, I suggest an advanced UI update for this project.",
+                    "Data received. Everything is functioning within 2050 parameters."
+                ];
+                const reply = responses[Math.floor(Math.random() * responses.length)];
+                
+                output.innerHTML += `<br><span style="color:var(--neon-blue);">AI:</span> ${reply}`;
+                
+                speak(reply);
+            }, 1500);
         }
 
-        // Analysis & Sound Output
-        function runAnalysis() {
-            const query = document.getElementById('cmdInput').value || "Auto-Scan";
-            scanner.style.display = 'block';
-            video.style.filter = "hue-rotate(90deg) saturate(2) brightness(1)";
-            log("ANALYZING PIXELS...");
+        function speak(text) {
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.pitch = 0.85;
+            utterance.rate = 1.0;
+            
+            utterance.onstart = () => {
+                recognition.stop(); // Stop listening while talking to avoid feedback
+            };
 
-            setTimeout(() => {
-                scanner.style.display = 'none';
-                video.style.filter = "brightness(0.7) contrast(1.2) hue-rotate(180deg)";
-                
-                const response = "Environment analyzed. Hardware configuration optimized for futuristic code deployment.";
-                log("AI RESPONSE: " + response);
+            utterance.onend = () => {
+                document.body.classList.remove('ai-thinking');
+                scanLaser.style.display = 'none';
+                recognition.start(); // Go back to "Always-On" listening
+            };
 
-                const utterance = new SpeechSynthesisUtterance(response);
-                utterance.pitch = 0.8;
-                utterance.rate = 1.0;
-                synth.speak(utterance);
-                
-                document.getElementById('cmdInput').value = "";
-            }, 1800);
+            synth.speak(utterance);
         }
     </script>
 </body>
