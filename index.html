@@ -3,190 +3,161 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AI LIDAR VISION PRO</title>
+    <title>AI PROJECTOR ANALYZER 2050</title>
     <style>
-        :root { --lidar-neon: #00ff41; --projector-cyan: #00f2ff; }
-        body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #000; overflow: hidden; font-family: 'Courier New', monospace; }
+        body, html { margin: 0; padding: 0; background: #000; overflow: hidden; font-family: 'Segoe UI', Tahoma, sans-serif; }
 
-        /* Real-Time Back Camera Feed */
-        #camera-feed {
+        /* RAW COLOR CAMERA - NO FILTERS */
+        #projector-feed {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             object-fit: cover; z-index: 1;
         }
 
-        /* Computer Vision Overlay */
-        #vision-canvas {
+        /* PROJECTOR OVERLAY */
+        #projector-canvas {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            z-index: 5; mix-blend-mode: screen;
+            z-index: 5; mix-blend-mode: screen; /* Makes colors "project" onto the camera */
         }
 
-        /* HUD Interface */
+        /* ANALYZER HUD */
         #hud {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            z-index: 10; pointer-events: none;
-            border: 1px solid rgba(0, 255, 65, 0.2);
-            box-sizing: border-box;
+            position: fixed; inset: 0; z-index: 10; pointer-events: none;
+            display: flex; flex-direction: column; justify-content: space-between;
+            padding: 20px; color: #fff;
         }
 
-        .data-stream {
-            position: absolute; top: 20px; left: 20px; color: var(--lidar-neon);
-            font-size: 11px; text-shadow: 0 0 5px #00ff41;
-        }
+        .hud-header { border-left: 4px solid #00f2ff; padding-left: 10px; background: rgba(0,0,0,0.3); width: fit-content; }
+        .hud-footer { font-family: monospace; font-size: 12px; color: #00f2ff; }
 
-        #boot-screen {
-            position: fixed; inset: 0; background: #000; z-index: 100;
+        #init-overlay {
+            position: fixed; inset: 0; z-index: 100; background: #000;
             display: flex; flex-direction: column; align-items: center; justify-content: center;
         }
 
-        .pulse-btn {
-            background: none; border: 1px solid var(--projector-cyan);
-            color: var(--projector-cyan); padding: 20px 40px; cursor: pointer;
-            letter-spacing: 3px; font-weight: bold; transition: 0.3s;
+        .btn-launch {
+            background: #00f2ff; color: #000; border: none; padding: 15px 30px;
+            font-weight: bold; cursor: pointer; text-transform: uppercase;
         }
-        .pulse-btn:hover { background: var(--projector-cyan); color: #000; box-shadow: 0 0 30px var(--projector-cyan); }
     </style>
 </head>
 <body>
 
-<div id="boot-screen">
-    <h1 style="color:white; margin-bottom:40px;">LIDAR SYSTEM v2.0</h1>
-    <button class="pulse-btn" onclick="initLidar()">BOOT BACK-CAM SYSTEM</button>
-</div>
-
-<div id="hud">
-    <div class="data-stream">
-        [ CHANNEL: BACK_LENS_ENV ]<br>
-        [ SENSOR: SIMULATED_LIDAR ]<br>
-        [ DEPTH: <span id="dist-ui">0.00</span>m ]<br>
-        [ MAPPING: ACTIVE ]
+    <div id="init-overlay">
+        <h2 style="color:white">MULTIMEDIA PROJECTOR SYSTEM</h2>
+        <button class="btn-launch" onclick="launchSystem()">Start Back-Cam Analysis</button>
     </div>
-</div>
 
-<video id="camera-feed" autoplay playsinline></video>
-<canvas id="vision-canvas"></canvas>
+    <div id="hud">
+        <div class="hud-header">
+            <b>AI ANALYZER ACTIVE</b><br>
+            <small>LENS: BACK_COLOR_WIDE</small>
+        </div>
+        <div class="hud-footer">
+            X_COORD: <span id="pos-x">0</span> | Y_COORD: <span id="pos-y">0</span><br>
+            SIGNAL: HIGH_RES_COLOR
+        </div>
+    </div>
+
+    <video id="projector-feed" autoplay playsinline></video>
+    <canvas id="projector-canvas"></canvas>
 
 <script>
-    const video = document.getElementById('camera-feed');
-    const canvas = document.getElementById('vision-canvas');
-    const ctx = canvas.getContext('2d');
-    const distUI = document.getElementById('dist-ui');
+    const v = document.getElementById('projector-feed');
+    const c = document.getElementById('projector-canvas');
+    const ctx = c.getContext('2d');
+    const posX = document.getElementById('pos-x');
+    const posY = document.getElementById('pos-y');
 
-    let touchPos = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
-    let lerpPos = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
-    let points = [];
+    let target = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+    let current = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+    let rotation = 0;
 
-    // Initialize Camera and Screen Mapping
-    async function initLidar() {
+    async function launchSystem() {
         try {
+            // BACK CAMERA - HIGH QUALITY & COLOR
             const stream = await navigator.mediaDevices.getUserMedia({ 
-                video: { facingMode: "environment", width: { ideal: 1280 } } 
+                video: { facingMode: "environment", width: { ideal: 1920 }, height: { ideal: 1080 } } 
             });
-            video.srcObject = stream;
-            document.getElementById('boot-screen').style.display = 'none';
-            setupLidarPoints();
-            requestAnimationFrame(loop);
+            v.srcObject = stream;
+            document.getElementById('init-overlay').style.display = 'none';
+            resize();
+            loop();
         } catch (e) {
-            alert("LiDAR requires camera access.");
+            alert("Please allow camera access for the Projector app.");
         }
     }
 
-    // Fixed UI Logic: Sharp Scaling
-    function updateSize() {
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
+    function resize() {
+        c.width = window.innerWidth;
+        c.height = window.innerHeight;
     }
-    window.addEventListener('resize', updateSize);
-    updateSize();
+    window.addEventListener('resize', resize);
 
-    // Interaction Tracking
-    const moveEvent = (e) => {
+    // ANALYZER CONTROL: Touch to target a point in the room
+    const setTarget = (e) => {
         const t = e.touches ? e.touches[0] : e;
-        touchPos.x = t.clientX;
-        touchPos.y = t.clientY;
+        target.x = t.clientX;
+        target.y = t.clientY;
     };
-    window.addEventListener('mousemove', moveEvent);
-    window.addEventListener('touchstart', moveEvent);
-    window.addEventListener('touchmove', moveEvent);
-
-    function setupLidarPoints() {
-        // Create a grid for the computer vision mesh
-        for(let i=0; i<30; i++) {
-            points.push({
-                x: Math.random() * canvas.width,
-                y: Math.random() * canvas.height,
-                vx: (Math.random() - 0.5) * 2,
-                vy: (Math.random() - 0.5) * 2
-            });
-        }
-    }
+    window.addEventListener('mousemove', setTarget);
+    window.addEventListener('touchstart', setTarget);
+    window.addEventListener('touchmove', setTarget);
 
     function loop() {
-        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        ctx.clearRect(0, 0, c.width, c.height);
 
-        // Smoothing Logic (The "Projector Gliding" effect)
-        lerpPos.x += (touchPos.x - lerpPos.x) * 0.1;
-        lerpPos.y += (touchPos.y - lerpPos.y) * 0.1;
+        // Smoothing for Projector Gliding
+        current.x += (target.x - current.x) * 0.1;
+        current.y += (target.y - current.y) * 0.1;
+        rotation += 0.02;
 
-        const time = Date.now() * 0.002;
-        const depth = (1.5 + Math.sin(time) * 0.5).toFixed(2);
-        distUI.innerText = depth;
+        posX.innerText = Math.round(current.x);
+        posY.innerText = Math.round(current.y);
 
-        // Draw Laser Mesh
-        ctx.strokeStyle = 'rgba(0, 255, 65, 0.4)';
-        ctx.lineWidth = 1;
-
-        points.forEach(p => {
-            // Move points slightly
-            p.x += p.vx;
-            p.y += p.vy;
-            if(p.x < 0 || p.x > canvas.width) p.vx *= -1;
-            if(p.y < 0 || p.y > canvas.height) p.vy *= -1;
-
-            // Connect points near the touch/hologram position
-            let dx = p.x - lerpPos.x;
-            let dy = p.y - lerpPos.y;
-            let dist = Math.sqrt(dx*dx + dy*dy);
-
-            if(dist < 200) {
-                ctx.beginPath();
-                ctx.moveTo(p.x, p.y);
-                ctx.lineTo(lerpPos.x, lerpPos.y);
-                ctx.stroke();
-            }
-        });
-
-        // The AI Hologram (Multimedia Projector Style)
-        drawProjectorHologram(lerpPos.x, lerpPos.y, depth);
+        // DRAW PROJECTED ANALYZER
+        drawProjectedGraphics(current.x, current.y);
 
         requestAnimationFrame(loop);
     }
 
-    function drawProjectorHologram(x, y, d) {
-        ctx.shadowBlur = 15;
-        ctx.shadowColor = '#00f2ff';
-        ctx.strokeStyle = '#00f2ff';
-        ctx.lineWidth = 2;
-
-        // Geometric Core
+    function drawProjectedGraphics(x, y) {
         ctx.save();
         ctx.translate(x, y);
-        ctx.rotate(Date.now() * 0.001);
-        
-        // Multi-layered scanning rings
+
+        // 1. Scanner Crosshair
+        ctx.strokeStyle = '#00f2ff';
+        ctx.lineWidth = 1;
         ctx.beginPath();
-        ctx.arc(0, 0, 50 * d, 0, Math.PI * 2);
+        ctx.moveTo(-100, 0); ctx.lineTo(100, 0);
+        ctx.moveTo(0, -100); ctx.lineTo(0, 100);
         ctx.stroke();
 
+        // 2. Rotating Analysis Ring
+        ctx.rotate(rotation);
+        ctx.lineWidth = 3;
+        ctx.setLineDash([20, 10]);
         ctx.beginPath();
-        ctx.rect(-35*d, -35*d, 70*d, 70*d);
+        ctx.arc(0, 0, 60, 0, Math.PI * 2);
         ctx.stroke();
+        ctx.setLineDash([]);
 
-        // Projector "Beam" from bottom of screen
+        // 3. Central Core (Bright Glow)
+        ctx.shadowBlur = 20;
+        ctx.shadowColor = '#00f2ff';
+        ctx.fillStyle = 'rgba(0, 242, 255, 0.4)';
+        ctx.beginPath();
+        ctx.arc(0, 0, 15, 0, Math.PI * 2);
+        ctx.fill();
+
         ctx.restore();
+
+        // 4. Projector Light Beam
+        // This simulates the light coming from the lens to the touch point
         ctx.beginPath();
-        ctx.moveTo(canvas.width / 2, canvas.height);
+        ctx.moveTo(c.width / 2, c.height + 50); // Bottom of screen (The Projector)
         ctx.lineTo(x, y);
-        ctx.strokeStyle = 'rgba(0, 242, 255, 0.15)';
+        ctx.strokeStyle = 'rgba(0, 242, 255, 0.1)';
+        ctx.lineWidth = 40; // Wide beam
         ctx.stroke();
     }
 </script>
