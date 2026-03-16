@@ -3,133 +3,143 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Holo-LLM OS 2050</title>
+    <title>Holo-LLM OS: Neural LiDAR</title>
     <style>
-        body {
-            margin: 0;
-            background: #000;
-            color: #00f2ff;
-            font-family: 'Courier New', monospace;
-            overflow: hidden;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            height: 100vh;
-            perspective: 1000px;
+        :root {
+            --neon-cyan: #00f2ff;
+            --ultra-hdr-vibrance: saturate(1.8) contrast(1.1) brightness(1.1);
         }
 
-        #camera-bg {
+        body, html {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            background: #000; font-family: 'Segoe UI', Roboto, sans-serif;
+            overflow: hidden; color: var(--neon-cyan);
+        }
+
+        /* The "Default Camera App" Style Background */
+        #camera-view {
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
+            top: 0; left: 0;
+            width: 100vw; height: 100vh;
             object-fit: cover;
-            opacity: 0.4;
-            filter: grayscale(1) brightness(0.5);
+            /* Applying Google Camera-style processing */
+            filter: var(--ultra-hdr-vibrance);
+            z-index: 1;
         }
 
-        .hologram-container {
-            width: 300px;
-            height: 400px;
+        /* Futuristic 2050 Hologram Overlay */
+        .ui-layer {
             position: relative;
-            transform-style: preserve-3d;
-            animation: float 4s ease-in-out infinite;
-        }
-
-        .hologram-core {
-            width: 100%;
-            height: 100%;
-            background: rgba(0, 242, 255, 0.1);
-            border: 2px solid #00f2ff;
-            box-shadow: 0 0 50px rgba(0, 242, 255, 0.5);
-            backdrop-filter: blur(5px);
+            z-index: 10;
+            height: 100vh;
             display: flex;
             flex-direction: column;
+            justify-content: space-between;
+            padding: 30px;
+            pointer-events: none;
+            background: radial-gradient(circle, transparent 20%, rgba(0,0,0,0.4) 100%);
+        }
+
+        .hologram-card {
+            pointer-events: auto;
+            background: rgba(0, 242, 255, 0.05);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(0, 242, 255, 0.3);
+            border-left: 5px solid var(--neon-cyan);
             padding: 20px;
-            clip-path: polygon(10% 0, 90% 0, 100% 10%, 100% 90%, 90% 100%, 10% 100%, 0 90%, 0 10%);
+            width: 320px;
+            clip-path: polygon(0 0, 100% 0, 100% 85%, 85% 100%, 0 100%);
+            animation: pulse 2s infinite alternate;
         }
 
-        #output-text {
-            font-size: 1.2rem;
-            margin-top: 20px;
-            text-shadow: 0 0 10px #00f2ff;
-        }
-
-        .lidar-grid {
+        .lidar-scanner {
             position: absolute;
-            width: 200%;
-            height: 200%;
-            background-image: linear-gradient(rgba(0, 242, 255, 0.2) 1px, transparent 1px),
-                              linear-gradient(90deg, rgba(0, 242, 255, 0.2) 1px, transparent 1px);
-            background-size: 30px 30px;
-            transform: rotateX(60deg);
-            bottom: -100px;
-            left: -50%;
-            z-index: -1;
+            top: 50%; left: 50%;
+            width: 300px; height: 300px;
+            border: 2px solid var(--neon-cyan);
+            border-radius: 50%;
+            transform: translate(-50%, -50%) rotateX(60deg);
+            box-shadow: 0 0 50px var(--neon-cyan);
+            opacity: 0.5;
         }
 
-        @keyframes float {
-            0%, 100% { transform: translateY(0) rotateY(0deg); }
-            50% { transform: translateY(-20px) rotateY(5deg); }
+        @keyframes pulse {
+            from { box-shadow: 0 0 10px rgba(0,242,255,0.2); }
+            to { box-shadow: 0 0 30px rgba(0,242,255,0.5); }
         }
 
-        .status-bar {
-            font-size: 0.8rem;
+        .llm-output {
+            font-size: 1.1rem;
+            line-height: 1.4;
             text-transform: uppercase;
-            letter-spacing: 2px;
+            letter-spacing: 1px;
         }
     </style>
 </head>
 <body>
 
-    <video id="camera-bg" autoplay playsinline></video>
+    <video id="camera-view" autoplay playsinline></video>
     
-    <div class="lidar-grid"></div>
+    <div class="ui-layer">
+        <div class="hologram-card">
+            <div style="font-size: 0.7rem; opacity: 0.7;">NEURAL ENGINE V8.2</div>
+            <div class="llm-output" id="ai-text">Analyzing spatial LiDAR data...</div>
+        </div>
 
-    <div class="hologram-container">
-        <div class="hologram-core">
-            <div class="status-bar">LiDAR Active // LLM Online</div>
-            <div id="output-text">Initiating neural link... Listening for spatial commands.</div>
+        <div class="lidar-scanner"></div>
+
+        <div class="hologram-card" style="align-self: flex-end;">
+            <button id="action-btn" style="background: var(--neon-cyan); border: none; padding: 10px; width: 100%; cursor: pointer; font-weight: bold;">
+                SCAN ENVIRONMENT
+            </button>
         </div>
     </div>
 
     <script>
-        const video = document.getElementById('camera-bg');
-        const output = document.getElementById('output-text');
+        const video = document.getElementById('camera-view');
+        const textElement = document.getElementById('ai-text');
 
-        // Access Camera
-        async function startCamera() {
+        async function initAdvancedCamera() {
+            const constraints = {
+                video: {
+                    // FORCE BACK CAMERA
+                    facingMode: { exact: "environment" },
+                    // REQUEST HIGH RESOLUTION
+                    width: { ideal: 3840 },
+                    height: { ideal: 2160 }
+                }
+            };
+
             try {
-                const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+                const stream = await navigator.mediaDevices.getUserMedia(constraints);
                 video.srcObject = stream;
             } catch (err) {
-                console.error("Camera access denied", err);
+                // Fallback for computers/laptops without "environment" camera
+                console.warn("Back camera not found, using default.");
+                const fallbackStream = await navigator.mediaDevices.getUserMedia({ video: true });
+                video.srcObject = fallbackStream;
             }
         }
 
-        // Voice Synthesis for the LLM
-        function speak(text) {
-            const synth = window.speechSynthesis;
-            const utter = new SpeechSynthesisUtterance(text);
-            utter.pitch = 1.5;
-            utter.rate = 1.0;
-            synth.speak(utter);
+        function speakOutput(msg) {
+            const speech = new SpeechSynthesisUtterance(msg);
+            speech.lang = 'en-US'; // You can change this to 'bn-BD' for Bengali
+            speech.pitch = 0.8; 
+            window.speechSynthesis.speak(speech);
         }
 
-        // Simulated Interaction
-        window.onclick = () => {
-            const responses = [
-                "Spatial mesh analyzed. Hologram stabilized.",
-                "LiDAR detecting 3 objects in your vicinity.",
-                "System ready. What shall we build today?"
+        document.getElementById('action-btn').onclick = () => {
+            const aiLines = [
+                "Depth Map generated. Identifying structures.",
+                "LiDAR mesh locked. Colors optimized for P3 Gamut.",
+                "Object detected at 1.5 meters. Analyzing material."
             ];
-            const randomMsg = responses[Math.floor(Math.random() * responses.length)];
-            output.innerText = randomMsg;
-            speak(randomMsg);
+            const msg = aiLines[Math.floor(Math.random() * aiLines.length)];
+            textElement.innerText = msg;
+            speakOutput(msg);
         };
 
-        startCamera();
+        initAdvancedCamera();
     </script>
 </body>
 </html>
