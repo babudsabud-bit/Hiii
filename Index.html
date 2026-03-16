@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AI HOLOGRAM V3 - PRO</title>
+    <style>
+        :root { --glow: #00f2ff; --bg: #000b0d; }
+        body { margin: 0; background: var(--bg); overflow: hidden; font-family: 'Courier New', monospace; color: var(--glow); }
+
+        #ui-layer {
+            position: absolute; width: 100%; height: 100%;
+            pointer-events: none; z-index: 100;
+            border: 20px solid rgba(0, 242, 255, 0.05); box-sizing: border-box;
+        }
+
+        video {
+            position: fixed; width: 100vw; height: 100vh;
+            object-fit: cover; transform: scaleX(-1);
+            filter: grayscale(1) contrast(1.5) brightness(0.7);
+        }
+
+        canvas { position: fixed; top: 0; left: 0; z-index: 50; touch-action: none; }
+
+        /* Permission Overlay */
+        #permission-screen {
+            position: fixed; inset: 0; background: var(--bg);
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            z-index: 1000; text-align: center; padding: 20px;
+        }
+
+        button {
+            background: transparent; border: 1px solid var(--glow);
+            color: var(--glow); padding: 15px 30px; font-size: 1.2rem;
+            cursor: pointer; transition: 0.3s; margin-top: 20px;
+            box-shadow: 0 0 15px rgba(0, 242, 255, 0.2);
+        }
+        button:hover { background: var(--glow); color: #000; }
+
+        .scanline {
+            width: 100%; height: 2px; background: rgba(0, 242, 255, 0.2);
+            position: absolute; z-index: 200; animation: scan 4s linear infinite;
+        }
+        @keyframes scan { from { top: 0; } to { top: 100%; } }
+    </style>
+</head>
+<body>
+
+    <div id="permission-screen">
+        <h1>AI HOLOGRAM SYSTEM</h1>
+        <p>Biometric Camera & Touch Access Required</p>
+        <button id="start-btn">INITIALIZE SYSTEM</button>
+    </div>
+
+    <div id="ui-layer">
+        <div class="scanline"></div>
+        <div style="position:absolute; bottom:20px; left:20px; pointer-events:none;">
+            [ STATUS: <span id="sys-status">OFFLINE</span> ]<br>
+            [ TOUCH_SENSE: ACTIVE ]
+        </div>
+    </div>
+
+    <video id="v" autoplay playsinline></video>
+    <canvas id="c"></canvas>
+
+<script>
+    /**
+     * LOGIC IMPROVEMENTS:
+     * 1. Permission Safety: Using try/catch blocks for camera access.
+     * 2. Device Pixel Ratio Fix: Canvas scaling logic for sharp UI.
+     * 3. Touch Logic: Multi-touch event listeners for mobile support.
+     */
+    
+    const v = document.getElementById('v');
+    const c = document.getElementById('c');
+    const ctx = c.getContext('2d');
+    const startBtn = document.getElementById('start-btn');
+    const statusText = document.getElementById('sys-status');
+
+    let mouse = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+    let smooth = { x: window.innerWidth / 2, y: window.innerHeight / 2 };
+    let frame = 0;
+
+    // Fix Canvas Logic Error: Sharp resolution on all screens
+    function resize() {
+        const dpr = window.devicePixelRatio || 1;
+        c.width = window.innerWidth * dpr;
+        c.height = window.innerHeight * dpr;
+        c.style.width = window.innerWidth + 'px';
+        c.style.height = window.innerHeight + 'px';
+        ctx.scale(dpr, dpr);
+    }
+    window.addEventListener('resize', resize);
+    resize();
+
+    // Workable Camera Permission Logic
+    async function initSystem() {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ 
+                video: { facingMode: "user" }, 
+                audio: false 
+            });
+            v.srcObject = stream;
+            document.getElementById('permission-screen').style.display = 'none';
+            statusText.innerText = "ONLINE";
+            statusText.style.color = "#00ff00";
+            animate();
+        } catch (err) {
+            alert("System Failure: Camera access denied. Check browser permissions.");
+        }
+    }
+
+    // Touch & Mouse Logic
+    const updateTarget = (e) => {
+        const t = e.touches ? e.touches[0] : e;
+        mouse.x = t.clientX;
+        mouse.y = t.clientY;
+    };
+    window.addEventListener('mousemove', updateTarget);
+    window.addEventListener('touchstart', updateTarget);
+    window.addEventListener('touchmove', updateTarget);
+
+    function drawHologram(x, y) {
+        ctx.clearRect(0, 0, window.innerWidth, window.innerHeight);
+        
+        // Smoothing Logic (The "Glide" Effect)
+        smooth.x += (x - smooth.x) * 0.12;
+        smooth.y += (y - smooth.y) * 0.12;
+
+        frame += 0.05;
+        const sX = smooth.x;
+        const sY = smooth.y;
+
+        // Visual FX: Central Core
+        ctx.strokeStyle = '#00f2ff';
+        ctx.lineWidth = 2;
+        ctx.shadowBlur = 15;
+        ctx.shadowColor = '#00f2ff';
+
+        ctx.beginPath();
+        ctx.arc(sX, sY, 40 + Math.sin(frame)*5, 0, Math.PI * 2);
+        ctx.stroke();
+
+        // Visual FX: Rotating Pentagram/Geometry
+        ctx.save();
+        ctx.translate(sX, sY);
+        ctx.rotate(frame);
+        for(let i=0; i<3; i++) {
+            ctx.rotate((Math.PI * 2) / 3);
+            ctx.strokeRect(-50, -50, 100, 100);
+        }
+        ctx.restore();
+
+        // UI Label Tracking
+        ctx.shadowBlur = 0;
+        ctx.font = "10px monospace";
+        ctx.fillText(`ID: OBJ_774`, sX + 60, sY - 60);
+        ctx.beginPath();
+        ctx.moveTo(sX + 10, sY - 10);
+        ctx.lineTo(sX + 55, sY - 55);
+        ctx.stroke();
+    }
+
+    function animate() {
+        drawHologram(mouse.x, mouse.y);
+        requestAnimationFrame(animate);
+    }
+
+    startBtn.onclick = initSystem;
+</script>
+</body>
+</html>
