@@ -3,223 +3,102 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AETHER-OS | ALWAYS-ON AI</title>
+    <title>AETHER-OS | REAL VISION</title>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
     <style>
-        :root {
-            --neon-blue: #00f2ff;
-            --neon-green: #39ff14;
-            --bg: #010206;
-        }
+        :root { --neon: #00f2ff; --bg: #01050a; }
+        body { background: var(--bg); color: var(--neon); font-family: monospace; margin: 0; overflow: hidden; }
+        
+        #video-container { position: absolute; width: 100%; height: 100%; z-index: -1; }
+        video { width: 100%; height: 100%; object-fit: cover; filter: brightness(0.6); }
 
-        body {
-            background: var(--bg);
-            color: var(--neon-blue);
-            font-family: 'Consolas', monospace;
-            margin: 0;
-            overflow: hidden;
-            height: 100vh;
-        }
-
-        /* Full Screen Vision */
-        #vision-bg {
-            position: absolute;
-            top: 0; left: 0; width: 100%; height: 100%;
-            z-index: -1;
-        }
-
-        video {
-            width: 100%; height: 100%; object-fit: cover;
-            filter: contrast(1.1) brightness(0.6) saturate(0.5);
-            transition: filter 0.3s;
-        }
-
-        .ai-thinking video {
-            filter: hue-rotate(120deg) brightness(0.9) saturate(2);
-        }
-
-        /* Interface Overlay */
-        .hud-layer {
-            height: 100%;
-            padding: 40px;
-            display: flex;
-            flex-direction: column;
-            justify-content: space-between;
-            background: radial-gradient(circle, transparent 30%, rgba(1, 2, 6, 0.9) 100%);
-        }
-
-        .status-box {
-            border: 1px solid var(--neon-blue);
-            padding: 20px;
-            width: 300px;
-            background: rgba(0, 242, 255, 0.05);
-            backdrop-filter: blur(10px);
-        }
-
-        .pulse-indicator {
-            height: 12px; width: 12px; border-radius: 50%;
-            background: var(--neon-green);
-            display: inline-block;
-            margin-right: 10px;
-            box-shadow: 0 0 15px var(--neon-green);
-            animation: pulse 1.5s infinite;
-        }
-
-        @keyframes pulse {
-            0% { transform: scale(1); opacity: 1; }
-            50% { transform: scale(1.3); opacity: 0.5; }
-            100% { transform: scale(1); opacity: 1; }
-        }
-
-        .chat-stream {
-            font-size: 1.1rem;
-            max-width: 600px;
-            text-shadow: 0 0 10px var(--neon-blue);
-            line-height: 1.6;
-        }
-
-        .listening-status {
-            color: var(--neon-green);
-            font-weight: bold;
-            letter-spacing: 2px;
-            margin-top: 10px;
-        }
-
-        /* Scanner */
-        #scan-laser {
-            position: absolute; width: 100%; height: 3px;
-            background: var(--neon-green);
-            box-shadow: 0 0 20px var(--neon-green);
-            top: -10px; display: none;
-            animation: scanLine 2.5s infinite linear;
-        }
-
-        @keyframes scanLine { 0% { top: 0; } 100% { top: 100%; } }
-
-        .btn-init {
-            padding: 20px 40px;
-            background: transparent;
-            border: 2px solid var(--neon-blue);
-            color: var(--neon-blue);
-            font-size: 1.2rem;
-            cursor: pointer;
-            text-transform: uppercase;
-            letter-spacing: 5px;
-        }
+        .hud { padding: 30px; background: rgba(1, 5, 10, 0.7); height: 100vh; display: flex; flex-direction: column; }
+        .log-screen { flex-grow: 1; border: 1px solid var(--neon); margin: 20px 0; padding: 15px; background: rgba(0,0,0,0.5); overflow-y: auto; }
+        
+        .detect-box { color: #39ff14; font-weight: bold; font-size: 1.2rem; }
+        .btn-start { padding: 20px; border: 2px solid var(--neon); background: transparent; color: var(--neon); cursor: pointer; font-size: 1rem; }
+        .btn-start:hover { background: var(--neon); color: #000; }
+        
+        #scanner { position: absolute; width: 100%; height: 3px; background: #39ff14; top: 0; display: none; animation: scan 2s infinite linear; box-shadow: 0 0 15px #39ff14; }
+        @keyframes scan { 0% { top: 0; } 100% { top: 100%; } }
     </style>
 </head>
 <body>
 
-    <div id="vision-bg">
-        <video id="v-stream" autoplay playsinline></video>
-        <div id="scan-laser"></div>
+    <div id="video-container">
+        <video id="webcam" autoplay playsinline></video>
+        <div id="scanner"></div>
     </div>
 
-    <div class="hud-layer">
-        <div class="status-box">
-            <div><span class="pulse-indicator"></span> ALWAYS-ON ACTIVE</div>
-            <div class="listening-status" id="mic-status">INITIALIZING...</div>
+    <div class="hud">
+        <h1 style="letter-spacing: 5px;">AETHER VISION 2050</h1>
+        <button class="btn-start" id="startBtn" onclick="initSystem()">INITIALIZE SENSORS & AI</button>
+        
+        <div class="log-screen" id="log">
+            >> SYSTEM OFFLINE. AWAITING ACTIVATION...
         </div>
 
-        <div id="init-screen" style="position: absolute; top:50%; left:50%; transform:translate(-50%,-50%);">
-            <button class="btn-init" onclick="startAlwaysOn()">Activate AI Assistant</button>
+        <div id="analysis-result" style="font-size: 1.5rem; text-transform: uppercase;">
+            Status: <span id="status">IDLE</span>
         </div>
-
-        <div class="chat-stream" id="output">
-            </div>
     </div>
 
     <script>
-        const video = document.getElementById('v-stream');
-        const output = document.getElementById('output');
-        const micStatus = document.getElementById('mic-status');
-        const scanLaser = document.getElementById('scan-laser');
-        const synth = window.speechSynthesis;
+        const video = document.getElementById('webcam');
+        const log = document.getElementById('log');
+        const statusText = document.getElementById('status');
+        const scanner = document.getElementById('scanner');
+        let model;
 
-        let recognition;
-        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-
-        async function startAlwaysOn() {
-            document.getElementById('init-screen').style.display = 'none';
+        async function initSystem() {
+            log.innerHTML += "<br>>> LOADING NEURAL VISION MODEL (COCO-SSD)...";
+            document.getElementById('startBtn').style.display = 'none';
             
-            try {
-                const stream = await navigator.mediaDevices.getUserMedia({ 
-                    video: { facingMode: "environment" }, 
-                    audio: true 
-                });
-                video.srcObject = stream;
+            // 1. Load the AI Model
+            model = await cocoSsd.load();
+            log.innerHTML += "<br>>> MODEL LOADED SUCCESSFULLY.";
 
-                if (SpeechRecognition) {
-                    recognition = new SpeechRecognition();
-                    recognition.continuous = false; // We restart manually to keep it "Always On"
-                    recognition.interimResults = false;
-                    
-                    recognition.onstart = () => {
-                        micStatus.innerText = "LISTENING...";
-                        micStatus.style.color = "var(--neon-green)";
-                    };
+            // 2. Start Camera
+            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+            video.srcObject = stream;
+            
+            log.innerHTML += "<br>>> CAMERA FEED SYNCED.";
+            scanner.style.display = 'block';
+            
+            // 3. Start Analysis Loop
+            detectFrame();
+        }
 
-                    recognition.onresult = (event) => {
-                        const transcript = event.results[0][0].transcript;
-                        handleAIResponse(transcript);
-                    };
-
-                    recognition.onend = () => {
-                        // This is the "Always-On" core: restart if not currently speaking
-                        if (!synth.speaking) {
-                            recognition.start();
-                        }
-                    };
-
-                    recognition.start();
-                    speak("Always on mode enabled. I am listening.");
-                }
-
-            } catch (err) {
-                alert("Please grant camera and microphone access.");
+        async function detectFrame() {
+            const predictions = await model.detect(video);
+            
+            if (predictions.length > 0) {
+                // Take the first thing found
+                const mainObject = predictions[0].class;
+                const score = Math.round(predictions[0].score * 100);
+                
+                statusText.innerHTML = `AI DETECTED: <span class="detect-box">${mainObject} (${score}%)</span>`;
+                
+                // Only speak if it's a new discovery or every few seconds
+                speakResult(mainObject);
             }
+            
+            requestAnimationFrame(detectFrame);
         }
 
-        function handleAIResponse(input) {
-            output.innerHTML = `<span style="color:white;">User:</span> ${input}`;
-            
-            // Visual Processing
-            document.body.classList.add('ai-thinking');
-            scanLaser.style.display = 'block';
-            micStatus.innerText = "ANALYZING...";
-            micStatus.style.color = "orange";
-
-            // Advanced Response Logic (Simulated LLM)
-            setTimeout(() => {
-                const responses = [
-                    "I have analyzed the visual data. The environment is stable.",
-                    "Processing confirmed. I have optimized the robotic nodes for your query.",
-                    "Based on the camera feed, I suggest an advanced UI update for this project.",
-                    "Data received. Everything is functioning within 2050 parameters."
-                ];
-                const reply = responses[Math.floor(Math.random() * responses.length)];
+        let lastSpoken = "";
+        function speakResult(item) {
+            if (item !== lastSpoken) {
+                const synth = window.speechSynthesis;
+                const speech = new SpeechSynthesisUtterance(`I have found a ${item}`);
+                speech.pitch = 0.8;
+                synth.speak(speech);
                 
-                output.innerHTML += `<br><span style="color:var(--neon-blue);">AI:</span> ${reply}`;
-                
-                speak(reply);
-            }, 1500);
-        }
-
-        function speak(text) {
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.pitch = 0.85;
-            utterance.rate = 1.0;
-            
-            utterance.onstart = () => {
-                recognition.stop(); // Stop listening while talking to avoid feedback
-            };
-
-            utterance.onend = () => {
-                document.body.classList.remove('ai-thinking');
-                scanLaser.style.display = 'none';
-                recognition.start(); // Go back to "Always-On" listening
-            };
-
-            synth.speak(utterance);
+                log.innerHTML += `<br>>> ANALYSIS RESULT: ${item.toUpperCase()} DETECTED.`;
+                log.scrollTop = log.scrollHeight;
+                lastSpoken = item;
+            }
         }
     </script>
 </body>
