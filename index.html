@@ -3,186 +3,228 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AETHER-OS | FORCED SENSORS</title>
+    <title>AETHER-OS | ALWAYS-ON SENSES</title>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
     <style>
-        :root { --neon: #00f2ff; --err: #ff0055; --bg: #010206; }
-        body { background: var(--bg); color: var(--neon); font-family: 'Courier New', monospace; margin: 0; overflow: hidden; height: 100vh; }
-        
-        #vision-bg { position: absolute; width: 100%; height: 100%; z-index: -1; background: #000; }
-        video { width: 100%; height: 100%; object-fit: cover; opacity: 0.5; }
+        :root {
+            --neon-blue: #00f2ff;
+            --neon-green: #39ff14;
+            --bg: #010206;
+        }
 
-        .hud { height: 100%; display: flex; flex-direction: column; padding: 25px; box-sizing: border-box; }
-        .log-window { flex-grow: 1; border: 1px solid var(--neon); background: rgba(0,0,0,0.8); padding: 15px; overflow-y: auto; margin: 20px 0; font-size: 0.85rem; }
-        
-        .status-panel { display: flex; gap: 20px; font-weight: bold; font-size: 0.7rem; text-transform: uppercase; }
-        .indicator { padding: 5px 10px; border: 1px solid #333; }
-        .active { border-color: var(--neon); color: var(--neon); box-shadow: 0 0 10px var(--neon); }
-        .error { border-color: var(--err); color: var(--err); }
+        body {
+            background: var(--bg);
+            color: var(--neon-blue);
+            font-family: 'Consolas', 'Courier New', monospace;
+            margin: 0;
+            overflow: hidden;
+            height: 100vh;
+        }
 
-        .btn-core { padding: 20px; background: transparent; border: 2px solid var(--neon); color: var(--neon); cursor: pointer; font-weight: 900; letter-spacing: 3px; }
-        .btn-core:active { transform: scale(0.98); }
-        
-        #scan-line { position: absolute; width: 100%; height: 2px; background: var(--neon); top: 0; display: none; animation: scan 3s infinite linear; }
-        @keyframes scan { 0% { top: 0; } 100% { top: 100%; } }
+        #vision-viewport {
+            position: absolute;
+            top: 0; left: 0; width: 100%; height: 100%;
+            z-index: -1;
+        }
+
+        video {
+            width: 100%; height: 100%; object-fit: cover;
+            filter: contrast(1.2) brightness(0.5);
+            transition: filter 0.5s;
+        }
+
+        /* UI Overlay */
+        .hud-interface {
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            padding: 30px;
+            background: radial-gradient(circle, transparent 20%, rgba(1, 2, 6, 0.8) 100%);
+        }
+
+        .status-header {
+            border-left: 4px solid var(--neon-green);
+            padding-left: 15px;
+            background: rgba(0, 242, 255, 0.05);
+            width: fit-content;
+        }
+
+        .analysis-log {
+            max-width: 500px;
+            height: 150px;
+            overflow-y: hidden;
+            font-size: 0.9rem;
+            color: var(--neon-green);
+            background: rgba(0,0,0,0.4);
+            padding: 10px;
+            border: 1px solid rgba(0, 242, 255, 0.2);
+        }
+
+        .ai-response-bubble {
+            font-size: 1.5rem;
+            text-transform: uppercase;
+            text-shadow: 0 0 10px var(--neon-blue);
+            margin-bottom: 20px;
+        }
+
+        /* Scanning Laser */
+        #laser {
+            position: absolute; width: 100%; height: 2px;
+            background: var(--neon-green);
+            box-shadow: 0 0 15px var(--neon-green);
+            top: 0; display: none;
+            animation: scanMove 3s infinite linear;
+        }
+
+        @keyframes scanMove { 0% { top: 0; } 100% { top: 100%; } }
+
+        .init-btn {
+            padding: 25px 50px;
+            background: transparent;
+            border: 2px solid var(--neon-blue);
+            color: var(--neon-blue);
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: 0.3s;
+        }
+
+        .init-btn:hover {
+            background: var(--neon-blue);
+            color: #000;
+            box-shadow: 0 0 30px var(--neon-blue);
+        }
     </style>
 </head>
 <body>
 
-    <div id="vision-bg">
-        <video id="webcam" autoplay playsinline muted></video>
-        <div id="scan-line"></div>
+    <div id="vision-viewport">
+        <video id="webcam" autoplay playsinline></video>
+        <div id="laser"></div>
     </div>
 
-    <div class="hud">
-        <div class="status-panel">
-            <div id="cam-stat" class="indicator">CAM: OFF</div>
-            <div id="mic-stat" class="indicator">MIC: OFF</div>
-            <div id="ai-stat" class="indicator">AI: OFFLINE</div>
+    <div class="hud-interface">
+        <div class="status-header">
+            <div style="font-weight: bold; letter-spacing: 2px;">AETHER-OS // PERPETUAL MODE</div>
+            <div id="mic-indicator">SENSORS: STANDBY</div>
         </div>
 
-        <div class="log-window" id="console">
-            >> SYSTEM READY. AWAITING HARDWARE COMMAND...
+        <div id="start-screen" style="text-align: center;">
+            <button class="init-btn" onclick="activateAlwaysOn()">AUTHORIZE FULL SENSOR ACCESS</button>
         </div>
 
-        <div id="ai-output" style="font-size: 1.4rem; min-height: 60px; margin-bottom: 10px; color: white;">
-            AI: WAITING FOR INPUT...
+        <div>
+            <div class="analysis-log" id="log">>> Awaiting Neural Link...</div>
+            <div class="ai-response-bubble" id="ai-text">AI: [READY TO ANALYZE]</div>
         </div>
-
-        <button class="btn-core" onclick="forceInitialize()">ACTIVATE ALWAYS-ON SENSORS</button>
     </div>
 
     <script>
         const video = document.getElementById('webcam');
-        const consoleLog = document.getElementById('console');
-        const aiOutput = document.getElementById('ai-output');
-        const scanLine = document.getElementById('scan-line');
+        const log = document.getElementById('log');
+        const aiText = document.getElementById('ai-text');
+        const laser = document.getElementById('laser');
+        const micIndicator = document.getElementById('mic-indicator');
         const synth = window.speechSynthesis;
         
         let model;
-        let isListening = false;
+        let recognition;
         const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
 
-        function updateLog(msg, isError = false) {
-            const color = isError ? "var(--err)" : "var(--neon)";
-            consoleLog.innerHTML += `<div style="color:${color}">>> ${msg}</div>`;
-            consoleLog.scrollTop = consoleLog.scrollHeight;
-        }
-
-        async function forceInitialize() {
-            updateLog("FORCING HARDWARE ACCESS...");
+        async function activateAlwaysOn() {
+            document.getElementById('start-screen').style.display = 'none';
+            log.innerHTML = ">> REQUESTING PERMISSIONS...";
             
             try {
-                // 1. Request combined permissions
+                // 1. Request Camera & Mic Permissions
                 const stream = await navigator.mediaDevices.getUserMedia({ 
                     video: { facingMode: "environment" }, 
                     audio: true 
                 });
-                
                 video.srcObject = stream;
-                document.getElementById('cam-stat').className = "indicator active";
-                document.getElementById('cam-stat').innerText = "CAM: ON";
-                updateLog("CAMERA PERMISSION GRANTED.");
-
-                // 2. Load Vision AI
-                updateLog("LOADING TENSORFLOW VISION BRAIN...");
-                model = await cocoSsd.load();
-                document.getElementById('ai-stat').className = "indicator active";
-                document.getElementById('ai-stat').innerText = "AI: ONLINE";
-                scanLine.style.display = "block";
-                updateLog("VISION AI ACTIVE.");
-
-                // 3. Start Infinite Voice Listener
-                startVoiceLoop();
                 
-                // 4. Start Vision Loop
-                runVision();
+                // 2. Load Vision Model
+                log.innerHTML += "<br>>> LOADING VISION BRAIN...";
+                model = await cocoSsd.load();
+                log.innerHTML += "<br>>> BRAIN LOADED. STARTING ALWAYS-ON LOOP.";
+                laser.style.display = 'block';
 
-                speak("Sensors fully engaged. I am watching and listening perpetually.");
+                // 3. Start Constant Listening
+                if (SpeechRecognition) {
+                    recognition = new SpeechRecognition();
+                    recognition.continuous = false;
+                    recognition.interimResults = false;
 
-            } catch (err) {
-                updateLog("CRITICAL ERROR: " + err.message, true);
-                if (err.name === "NotAllowedError") {
-                    alert("ERROR: Camera/Mic blocked. Please go to browser settings and 'Allow' access.");
-                }
-            }
-        }
+                    recognition.onstart = () => {
+                        micIndicator.innerText = "MICROPHONE: LISTENING";
+                        micIndicator.style.color = "var(--neon-green)";
+                    };
 
-        function startVoiceLoop() {
-            if (!SpeechRecognition) {
-                updateLog("SPEECH RECOGNITION NOT SUPPORTED", true);
-                return;
-            }
+                    recognition.onresult = (event) => {
+                        const transcript = event.results[0][0].transcript;
+                        processCommand(transcript);
+                    };
 
-            const recognition = new SpeechRecognition();
-            recognition.continuous = false; // We use false and manual restart to prevent "hanging"
-            recognition.interimResults = false;
-            recognition.lang = 'en-US';
+                    recognition.onend = () => {
+                        // Restart recognition immediately for "Always-On"
+                        if (!synth.speaking) recognition.start();
+                    };
 
-            recognition.onstart = () => {
-                isListening = true;
-                document.getElementById('mic-stat').className = "indicator active";
-                document.getElementById('mic-stat').innerText = "MIC: LISTENING";
-            };
-
-            recognition.onresult = async (event) => {
-                const text = event.results[0][0].transcript;
-                updateLog(`HEARD: "${text.toUpperCase()}"`);
-                await processInput(text);
-            };
-
-            recognition.onerror = (event) => {
-                updateLog("MIC ERROR: " + event.error, true);
-            };
-
-            recognition.onend = () => {
-                isListening = false;
-                document.getElementById('mic-stat').className = "indicator";
-                document.getElementById('mic-stat').innerText = "MIC: SLEEP";
-                // PERPETUAL RESTART: Restart listening if AI isn't speaking
-                if (!synth.speaking) {
                     recognition.start();
                 }
-            };
 
-            recognition.start();
-        }
+                // 4. Run Vision Analysis
+                analyzeVideo();
+                speak("System fully active. I am watching and listening.");
 
-        async function processInput(text) {
-            aiOutput.innerText = "AI: ANALYZING...";
-            const predictions = await model.detect(video);
-            
-            let foundText = "";
-            if (predictions.length > 0) {
-                foundText = `I see a ${predictions[0].class}. `;
-            } else {
-                foundText = "I cannot see clearly, but I heard you. ";
+            } catch (err) {
+                log.innerHTML += `<br>!! ERROR: ${err.message}`;
             }
-
-            const finalReply = foundText + "Ready for your next command.";
-            aiOutput.innerText = `AI: ${finalReply}`;
-            speak(finalReply);
         }
 
-        async function runVision() {
+        async function analyzeVideo() {
             if (model) {
                 const predictions = await model.detect(video);
-                // Background processing to keep AI "warm"
+                if (predictions.length > 0) {
+                    const found = predictions[0].class;
+                    log.innerHTML = `>> CURRENTLY IDENTIFIED: ${found.toUpperCase()}`;
+                }
             }
-            requestAnimationFrame(runVision);
+            requestAnimationFrame(analyzeVideo);
+        }
+
+        async function processCommand(cmd) {
+            log.innerHTML += `<br>>> PROCESSING VOICE: "${cmd}"`;
+            
+            // Perform Visual Analysis specifically for the query
+            const predictions = await model.detect(video);
+            let reply = "";
+
+            if (predictions.length > 0) {
+                const objectName = predictions[0].class;
+                reply = `I have analyzed your surroundings. I see a ${objectName}. Regarding your question about ${cmd}, I am ready to assist.`;
+            } else {
+                reply = `I heard you say ${cmd}, but I cannot clearly identify any objects in the current frame. Please adjust the camera.`;
+            }
+
+            aiText.innerText = `AI: ${reply}`;
+            speak(reply);
         }
 
         function speak(text) {
             const utterance = new SpeechSynthesisUtterance(text);
             utterance.pitch = 0.8;
-            utterance.rate = 1.0;
-            
-            utterance.onend = () => {
-                // Once done talking, make sure mic starts again if it died
-                if (!isListening) startVoiceLoop();
+            utterance.rate = 1.1;
+
+            utterance.onstart = () => {
+                if(recognition) recognition.stop(); // Stop listening while talking
             };
-            
+
+            utterance.onend = () => {
+                if(recognition) recognition.start(); // Resume "Always-On"
+            };
+
             synth.speak(utterance);
         }
     </script>
